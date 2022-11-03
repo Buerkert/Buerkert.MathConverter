@@ -21,13 +21,15 @@ jobs:
       uses: actions/setup-dotnet@v2
       with:
         dotnet-version: |
-          3.1.x
           6.0.x
     - name: Build with dotnet
       working-directory: ./MathConverter/WPF
       run: dotnet build -c Release
+    - name: Build test project
+      working-directory: ./MathConverter.UnitTests/WPF
+      run: dotnet build
     - name: Run unit tests
-      working-directory: ./MathConverter.UnitTests
+      working-directory: ./MathConverter.UnitTests/WPF
       run: dotnet test
     - name: Upload artifact
       uses: actions/upload-artifact@v2
