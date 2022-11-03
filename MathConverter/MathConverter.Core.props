@@ -17,8 +17,8 @@
     <ApplicationVersion>$(AssemblyVersion)</ApplicationVersion>
     <Authors>Hex Innovation, $(Company)</Authors>
     <Description>A $(MathConverterTarget) Converter class that does it all.</Description>
-    <PackageProjectUrl>https://github.com/Buerkert/MathConverter</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Buerkert/MathConverter</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/hexinnovation/MathConverter</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/hexinnovation/MathConverter</RepositoryUrl>
     <PackageIcon>smalllogo.png</PackageIcon>
     <PackageId>Buerkert.$(AssemblyName)</PackageId>
     <RepositoryType>GitHub</RepositoryType>
