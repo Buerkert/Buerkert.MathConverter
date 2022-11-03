@@ -2,25 +2,23 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace HexInnovation
 {
-    class Scanner : IDisposable
+    internal class Scanner : IDisposable
     {
-        public Scanner(Parser parser, string Expression)
-            : this(parser, new StringReader(Expression)) { }
-        public Scanner(Parser parser, StringReader reader)
+        public Scanner(Parser parser, string expression)
+            : this(parser, new StringReader(expression)) { }
+        private Scanner(Parser parser, StringReader reader)
         {
-            this._parser = parser;
-            this._reader = reader;
+            _parser = parser;
+            _reader = reader;
             _needsToken = true;
             Position = -1;
         }
-        private Parser _parser;
-        private TextReader _reader;
+        private readonly Parser _parser;
+        private readonly TextReader _reader;
         private Token _lastToken;
         private bool _needsToken;
         public int Position { get; private set; }
@@ -68,8 +66,12 @@ namespace HexInnovation
                             case -1:
                                 return new Token(TokenType.EOF);
                             case '+':
+                                if (_reader.Peek() == '+')
+                                    throw new ParsingException(Position, "The ++ operator is not supported.");
                                 return new Token(TokenType.Plus);
                             case '-':
+                                if (_reader.Peek() == '-')
+                                    throw new ParsingException(Position, "The -- operator is not supported.");
                                 return new Token(TokenType.Minus);
                             case '*':
                                 return new Token(TokenType.Times);
@@ -117,11 +119,14 @@ namespace HexInnovation
                                 state = ScannerState.NumberAfterDecimal;
                                 sb.Append('.');
                                 break;
+                            case '`':
+                                state = ScannerState.CaretString;
+                                break;
                             case '"':
                                 state = ScannerState.DoubleQuoteString;
                                 break;
-                            case '`':
-                                state = ScannerState.CaretString;
+                            case '\'':
+                                state = ScannerState.SingleQuoteString;
                                 break;
                             case '$':
                                 Position++;
@@ -134,8 +139,11 @@ namespace HexInnovation
                                     case '"':
                                         state = ScannerState.InterpolatedString | ScannerState.DoubleQuoteString;
                                         break;
+                                    case '\'':
+                                        state = ScannerState.InterpolatedString | ScannerState.SingleQuoteString;
+                                        break;
                                     default:
-                                        throw new ParsingException(Position, "A '$' character must be proceeded by a caret (`) or double-quote (\") character.");
+                                        throw new ParsingException(Position, "A '$' character must be proceeded by a caret (`), double-quote (\"), or single-quote (') character.");
                                 }
                                 break;
                             case '!':
@@ -224,12 +232,14 @@ namespace HexInnovation
                             }
                             else
                             {
-                                if (ch == '.')
-                                    throw new ParsingException(Position, "Found second decimal in number " + sb.ToString());
-                                else if (sb.ToString().Last() == '.')
-                                    throw new ParsingException(Position, "A number cannot end in a decimal.  The number was: " + sb.ToString());
+                                var number = sb.ToString();
 
-                                return new LexicalToken(TokenType.Number, sb.ToString());
+                                if (ch == '.')
+                                    throw new ParsingException(Position, $"Found second decimal in number {sb}");
+                                else if (number.Last() == '.')
+                                    throw new ParsingException(Position, $"A number cannot end in a decimal. The number was {sb}");
+
+                                return new LexicalToken(TokenType.Number, number);
                             }
                         }
                     case ScannerState.Lexical:
@@ -256,10 +266,12 @@ namespace HexInnovation
 
                     case ScannerState.CaretString | ScannerState.InterpolatedString:
                     case ScannerState.DoubleQuoteString | ScannerState.InterpolatedString:
+                    case ScannerState.SingleQuoteString | ScannerState.InterpolatedString:
                     case ScannerState.CaretString:
                     case ScannerState.DoubleQuoteString:
+                    case ScannerState.SingleQuoteString:
                         var isInterpolatedString = (state & ScannerState.InterpolatedString) == ScannerState.InterpolatedString;
-                        var Arguments = new List<AbstractSyntaxTree>();
+                        var arguments = new List<AbstractSyntaxTree>();
 
                         while (true)
                         {
@@ -289,16 +301,20 @@ namespace HexInnovation
                                              *  \ => backslash-escaped.
                                              *  ` => maybe throw
                                              *  " => maybe throw
+                                             *  ' => maybe throw
                                              */
 
-                                            sb.Append(Arguments.Count);
+                                            sb.Append(arguments.Count);
                                             try
                                             {
-                                                Arguments.Add(_parser.ParseInterpolatedStringArg());
-                                                switch (GetToken().TokenType)
+                                                arguments.Add(_parser.ParseInterpolatedStringArg());
+                                                var nextToken = GetToken().TokenType;
+                                                switch (nextToken)
                                                 {
+                                                    case TokenType.Semicolon:
                                                     case TokenType.Colon:
-                                                        sb.Append(':');
+                                                        sb.Append(nextToken == TokenType.Semicolon ? ',' : ':');
+
                                                         while (ch != '}')
                                                         {
                                                             Position++;
@@ -365,6 +381,9 @@ namespace HexInnovation
                                                                         case '"':
                                                                             sb.Append('"');
                                                                             break;
+                                                                        case '\'':
+                                                                            sb.Append('\'');
+                                                                            break;
                                                                         default:
                                                                             throw new ParsingException(Position, $"The character \'\\{(char)ch}\' is not a valid backslash-escaped character.");
                                                                     }
@@ -378,6 +397,11 @@ namespace HexInnovation
                                                                     if ((state & ~ScannerState.InterpolatedString) == ScannerState.DoubleQuoteString)
                                                                         throw new ParsingException(Position, "Missing close delimiter '}' for interpolated expression started with '{'.");
                                                                     sb.Append('"');
+                                                                    break;
+                                                                case '\'':
+                                                                    if ((state & ~ScannerState.InterpolatedString) == ScannerState.SingleQuoteString)
+                                                                        throw new ParsingException(Position, "Missing close delimiter '}' for interpolated expression started with '{'.");
+                                                                    sb.Append('`');
                                                                     break;
                                                             }
                                                         }
@@ -437,6 +461,9 @@ namespace HexInnovation
                                         case '"':
                                             sb.Append('"');
                                             break;
+                                        case '\'':
+                                            sb.Append('\'');
+                                            break;
                                         default:
                                             throw new ParsingException(Position, $"The character \'\\{(char)ch}\' is not a valid backslash-escaped character.");
                                     }
@@ -449,9 +476,12 @@ namespace HexInnovation
                                             break;
                                         case ScannerState.DoubleQuoteString:
                                             if (isInterpolatedString)
-                                                return new InterpolatedStringToken(sb.ToString(), Arguments);
+                                                return new InterpolatedStringToken(sb.ToString(), arguments);
                                             else
                                                 return new LexicalToken(TokenType.String, sb.ToString());
+                                        case ScannerState.SingleQuoteString:
+                                            sb.Append('"');
+                                            break;
                                     }
                                     break;
                                 case '`':
@@ -459,12 +489,31 @@ namespace HexInnovation
                                     {
                                         case ScannerState.CaretString:
                                             if (isInterpolatedString)
-                                                return new InterpolatedStringToken(sb.ToString(), Arguments);
+                                                return new InterpolatedStringToken(sb.ToString(), arguments);
                                             else
                                                 return new LexicalToken(TokenType.String, sb.ToString());
                                         case ScannerState.DoubleQuoteString:
                                             sb.Append('`');
                                             break;
+                                        case ScannerState.SingleQuoteString:
+                                            sb.Append('`');
+                                            break;
+                                    }
+                                    break;
+                                case '\'':
+                                    switch (state & ~ScannerState.InterpolatedString)
+                                    {
+                                        case ScannerState.CaretString:
+                                            sb.Append('\'');
+                                            break;
+                                        case ScannerState.DoubleQuoteString:
+                                            sb.Append('\'');
+                                            break;
+                                        case ScannerState.SingleQuoteString:
+                                            if (isInterpolatedString)
+                                                return new InterpolatedStringToken(sb.ToString(), arguments);
+                                            else
+                                                return new LexicalToken(TokenType.String, sb.ToString());
                                     }
                                     break;
                                 case -1:
@@ -472,6 +521,9 @@ namespace HexInnovation
 
                             }
                         }
+
+                    default:
+                        throw new Exception($"MathConverter internal exception: Parser is in an invalid state.");
                 }
             }
         }
@@ -481,7 +533,13 @@ namespace HexInnovation
             _needsToken = false;
         }
 
-        enum ScannerState
+        public void Dispose()
+        {
+            _reader.Dispose();
+        }
+
+        [Flags]
+        private enum ScannerState
         {
             NoToken = 0,
             Number = 1,
@@ -489,69 +547,9 @@ namespace HexInnovation
             Lexical = 4,
             DoubleQuoteString = 8,
             CaretString = 16,
+            SingleQuoteString = 32,
 
             InterpolatedString = 0x8000,
-        }
-
-        ~Scanner()
-        {
-            Dispose();
-        }
-        public void Dispose()
-        {
-            _reader.Dispose();
-        }
-    }
-
-    [Serializable]
-    public class ParsingException : Exception
-    {
-        public ParsingException(int position)
-        {
-            this.Position = position;
-        }
-        public ParsingException(int position, string message) : base(message)
-        {
-            this.Position = position;
-        }
-        public ParsingException(int position, string message, Exception inner) : base(message, inner)
-        {
-            this.Position = position;
-        }
-        protected ParsingException(int position, SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-            this.Position = position;
-        }
-        /// <summary>
-        /// The position in the string at which an exception was thrown.
-        /// </summary>
-        public int Position { get; set; }
-        private string PositionOrdinal
-        {
-            get
-            {
-                if (Position < 11 || Position > 13)
-                {
-                    switch (Position % 10)
-                    {
-                        case 1:
-                            return "st";
-                        case 2:
-                            return "nd";
-                        case 3:
-                            return "rd";
-                    }
-                }
-                return "th";
-            }
-        }
-        public override string Message
-        {
-            get
-            {
-                return $"The parser threw an exception at the {Position}{PositionOrdinal} character:\r\n{base.Message}";
-            }
         }
     }
 }

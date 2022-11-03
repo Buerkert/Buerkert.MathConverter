@@ -1,24 +1,132 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
+
+#if XAMARIN
+using Xamarin.Forms;
+using TypeConverterAttribute = Xamarin.Forms.TypeConverterAttribute;
+using XamarinTypeConverter = Xamarin.Forms.TypeConverter;
+using DependencyProperty = Xamarin.Forms.BindableProperty;
+#else
 using System.Windows;
 using System.Windows.Data;
-using System.Windows.Media;
+using System.Windows.Markup;
+#endif
 
 namespace HexInnovation
 {
     /// <summary>
     /// MathConverter is a WPF Converter class that does it all.
     /// </summary>
+    [ContentProperty(nameof(CustomFunctions))]
     public class MathConverter : IValueConverter, IMultiValueConverter
     {
+        /// <summary>
+        /// Computes the ordinal number for an integer.
+        /// For example, turns 12 to "12th" or 1 to "1st"
+        /// </summary>
+        /// <param name="number">The number for which we want to compute the ordinal value.</param>
+        /// <returns>A string that indicates to a human what position a number is in (1st, 2nd, 3rd, etc.)</returns>
+        internal static string ComputeOrdinal(int number)
+        {
+            if (number % 100 < 11 || number % 100 > 13)
+            {
+                switch (number % 10)
+                {
+                    case 1:
+                        return $"{number}st";
+                    case 2:
+                        return $"{number}nd";
+                    case 3:
+                        return $"{number}rd";
+                }
+            }
+            return $"{number}th";
+        }
+        /// <summary>
+        /// Sanitizes an argument as specified by a Binding.
+        /// Converts DependencyProperty.UnsetValue with a warning to identify to a developer which Binding might not be correctly configured.
+        /// </summary>
+        /// <param name="arg">The argument to sanitize</param>
+        /// <param name="argIndex">Which argument (starting with zero) is this binding in the <see cref="MultiBinding"/>?</param>
+        /// <param name="totalBinding">How many arguments are there total? If there is only one, we're assuming this converter is being used on a <see cref="Binding"/>, not a <see cref="MultiBinding"/></param>
+        /// <param name="parameter">The ConverterParameter being used for this conversion. This helps identify the (possibly faulty) binding.</param>
+        /// <param name="targetType">The type we're trying to convert to. This helps identify the (possibly faulty) binding.</param>
+        /// <returns>The <paramref name="arg"/> passed in, or <code>null</code> if the <paramref name="arg"/> is equal to <see cref="DependencyProperty.UnsetValue"/></returns>
+        private static object SanitizeBinding(object arg, int argIndex, int totalBinding, object parameter, Type targetType)
+        {
+            if (arg == DependencyProperty.UnsetValue)
+            {
+                Debug.WriteLine($"Encountered {nameof(DependencyProperty.UnsetValue)} in the {(totalBinding > 1 ? $"{ComputeOrdinal(argIndex + 1)} " : "")}argument while trying to convert to type \"{targetType.FullName}\" using the ConverterParameter {(parameter == null ? "'null'" : $"\"{parameter}\"")}. Double-check that your binding is correct.");
+                return null;
+            }
+
+            return arg;
+        }
+
+
+        public CustomFunctionCollection CustomFunctions { get; }
+
+
         /// <summary>
         /// Creates a new MathConverter object.
         /// </summary>
         public MathConverter()
         {
-
+            CustomFunctions = new CustomFunctionCollection
+            {
+                { new CustomFunctionDefinition { Name = "Now", Function = typeof(NowFunction) } },
+                { new CustomFunctionDefinition { Name = "Cos", Function = typeof(CosFunction) } },
+                { new CustomFunctionDefinition { Name = "Sin", Function = typeof(SinFunction) } },
+                { new CustomFunctionDefinition { Name = "Tan", Function = typeof(TanFunction) } },
+                { new CustomFunctionDefinition { Name = "Abs", Function = typeof(AbsFunction) } },
+                { new CustomFunctionDefinition { Name = "Acos", Function = typeof(AcosFunction) } },
+                { new CustomFunctionDefinition { Name = "ArcCos", Function = typeof(AcosFunction) } },
+                { new CustomFunctionDefinition { Name = "Asin", Function = typeof(AsinFunction) } },
+                { new CustomFunctionDefinition { Name = "ArcSin", Function = typeof(AsinFunction) } },
+                { new CustomFunctionDefinition { Name = "Atan", Function = typeof(AtanFunction) } },
+                { new CustomFunctionDefinition { Name = "ArcTan", Function = typeof(AtanFunction) } },
+                { new CustomFunctionDefinition { Name = "Ceil", Function = typeof(CeilingFunction) } },
+                { new CustomFunctionDefinition { Name = "Ceiling", Function = typeof(CeilingFunction) } },
+                { new CustomFunctionDefinition { Name = "Floor", Function = typeof(FloorFunction) } },
+                { new CustomFunctionDefinition { Name = "Sqrt", Function = typeof(SqrtFunction) } },
+                { new CustomFunctionDefinition { Name = "Deg", Function = typeof(DegreesFunction) } },
+                { new CustomFunctionDefinition { Name = "Degrees", Function = typeof(DegreesFunction) } },
+                { new CustomFunctionDefinition { Name = "Rad", Function = typeof(RadiansFunction) } },
+                { new CustomFunctionDefinition { Name = "Radians", Function = typeof(RadiansFunction) } },
+                { new CustomFunctionDefinition { Name = "ToLower", Function = typeof(ToLowerFunction) } },
+                { new CustomFunctionDefinition { Name = "LCase", Function = typeof(ToLowerFunction) } },
+                { new CustomFunctionDefinition { Name = "ToUpper", Function = typeof(ToUpperFunction) } },
+                { new CustomFunctionDefinition { Name = "UCase", Function = typeof(ToUpperFunction) } },
+#if !XAMARIN
+                { new CustomFunctionDefinition { Name = "VisibleOrCollapsed", Function = typeof(VisibleOrCollapsedFunction) } },
+                { new CustomFunctionDefinition { Name = "VisibleOrHidden", Function = typeof(VisibleOrHiddenFunction) } },
+#endif
+                { new CustomFunctionDefinition { Name = "TryParseDouble", Function = typeof(TryParseDoubleFunction) } },
+                { new CustomFunctionDefinition { Name = "StartsWith", Function = typeof(StartsWithFunction) } },
+                { new CustomFunctionDefinition { Name = "Contains", Function = typeof(ContainsFunction) } },
+                { new CustomFunctionDefinition { Name = "EndsWith", Function = typeof(EndsWithFunction) } },
+                { new CustomFunctionDefinition { Name = "Log", Function = typeof(LogFunction) } },
+                { new CustomFunctionDefinition { Name = "Atan2", Function = typeof(Atan2Function) } },
+                { new CustomFunctionDefinition { Name = "ArcTan2", Function = typeof(Atan2Function) } },
+                { new CustomFunctionDefinition { Name = "IsNull", Function = typeof(IsNullFunction) } },
+                { new CustomFunctionDefinition { Name = "IfNull", Function = typeof(IsNullFunction) } },
+                { new CustomFunctionDefinition { Name = "Round", Function = typeof(RoundFunction) } },
+                { new CustomFunctionDefinition { Name = "And", Function = typeof(AndFunction) } },
+                { new CustomFunctionDefinition { Name = "Nor", Function = typeof(NorFunction) } },
+                { new CustomFunctionDefinition { Name = "Or", Function = typeof(OrFunction) } },
+                { new CustomFunctionDefinition { Name = "Max", Function = typeof(MaxFunction) } },
+                { new CustomFunctionDefinition { Name = "Min", Function = typeof(MinFunction) } },
+                { new CustomFunctionDefinition { Name = "Avg", Function = typeof(AverageFunction) } },
+                { new CustomFunctionDefinition { Name = "Average", Function = typeof(AverageFunction) } },
+                { new CustomFunctionDefinition { Name = "Format", Function = typeof(FormatFunction) } },
+                { new CustomFunctionDefinition { Name = "Concat", Function = typeof(ConcatFunction) } },
+                { new CustomFunctionDefinition { Name = "Join", Function = typeof(JoinFunction) } },
+                { new CustomFunctionDefinition { Name = "Throw", Function = typeof(ThrowFunction) } },
+            };
         }
 
         /// <summary>
@@ -28,433 +136,8 @@ namespace HexInnovation
         {
             if (UseCache)
             {
-                CachedResults.Clear();
+                _cachedResults.Clear();
             }
-        }
-
-        private Dictionary<string, AbstractSyntaxTree[]> CachedResults = new Dictionary<string, AbstractSyntaxTree[]>();
-
-        /// <summary>
-        /// The conversion for a single value.
-        /// </summary>
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            return Convert(new object[] { value }, targetType, parameter, culture);
-        }
-        /// <summary>
-        /// The actual convert method, for zero or more parameters.
-        /// </summary>
-        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
-        {
-            Func<double, object> convert;
-
-            if (parameter is string param)
-            {
-                // Get the syntax tree from the expression.  We will cache the results to save time for future parsing of the same expression
-                // by the same MathConverter.
-                var x = ParseParameter(param);
-
-                switch (targetType?.FullName)
-                {
-                    case null:
-                    case "System.Object":
-                        switch (x.Length)
-                        {
-                            case 1:
-                                return x[0].Evaluate(values);
-                            default:
-                                throw new NotSupportedException(string.Format("The parameter specifies {0} values; Double supports only one", x.Length));
-                        }
-                    case "System.Double":
-                        switch (x.Length)
-                        {
-                            case 1:
-                                return MathConverter.ConvertToDouble(x[0].Evaluate(values));
-                            default:
-                                throw new NotSupportedException(string.Format("The parameter specifies {0} values; Double supports only one", x.Length));
-                        }
-                    case "System.Windows.CornerRadius":
-                        switch (x.Length)
-                        {
-                            case 1:
-                                return new CornerRadius(MathConverter.ConvertToDouble(x[0].Evaluate(values)).Value);
-                            case 4:
-                                return new CornerRadius(MathConverter.ConvertToDouble(x[0].Evaluate(values)).Value, MathConverter.ConvertToDouble(x[1].Evaluate(values)).Value, MathConverter.ConvertToDouble(x[2].Evaluate(values)).Value, MathConverter.ConvertToDouble(x[3].Evaluate(values)).Value);
-                            default:
-                                throw new NotSupportedException(string.Format("The parameter specifies {0} values; CornerRadius supports only one or four", x.Length));
-                        }
-                    case "System.Windows.GridLength":
-                        switch (x.Length)
-                        {
-                            case 1:
-                                return new GridLengthConverter().ConvertFrom(x[0].Evaluate(values));
-                            default:
-                                throw new NotSupportedException(string.Format("The parameter specifies {0} values; GridLength supports only one", x.Length));
-                        }
-                    case "System.Windows.Thickness":
-                        switch (x.Length)
-                        {
-                            case 1:
-                                return new Thickness(MathConverter.ConvertToDouble(x[0].Evaluate(values)).Value);
-                            case 2:
-                                return new Thickness(MathConverter.ConvertToDouble(x[0].Evaluate(values)).Value, MathConverter.ConvertToDouble(x[1].Evaluate(values)).Value, MathConverter.ConvertToDouble(x[0].Evaluate(values)).Value, MathConverter.ConvertToDouble(x[1].Evaluate(values)).Value);
-                            case 4:
-                                return new Thickness(MathConverter.ConvertToDouble(x[0].Evaluate(values)).Value, MathConverter.ConvertToDouble(x[1].Evaluate(values)).Value, MathConverter.ConvertToDouble(x[2].Evaluate(values)).Value, MathConverter.ConvertToDouble(x[3].Evaluate(values)).Value);
-                            default:
-                                throw new NotSupportedException(string.Format("The parameter specifies {0} values; Thickness supports only one, two, or four", x.Length));
-                        }
-                    case "System.Windows.Rect":
-                        switch (x.Length)
-                        {
-                            case 4:
-                                return new Rect(MathConverter.ConvertToDouble(x[0].Evaluate(values)).Value, MathConverter.ConvertToDouble(x[1].Evaluate(values)).Value, MathConverter.ConvertToDouble(x[2].Evaluate(values)).Value, MathConverter.ConvertToDouble(x[3].Evaluate(values)).Value);
-                            default:
-                                throw new NotSupportedException(string.Format("The parameter specifies {0} values; Rect supports only four", x.Length));
-                        }
-                    case "System.Windows.Size":
-                        switch (x.Length)
-                        {
-                            case 2:
-                                return new Size(MathConverter.ConvertToDouble(x[0].Evaluate(values)).Value, MathConverter.ConvertToDouble(x[1].Evaluate(values)).Value);
-                            default:
-                                throw new NotSupportedException(string.Format("You supplied {0} values; Size supports only two", x.Length));
-                        }
-
-                    case "System.Windows.Point":
-                        switch (x.Length)
-                        {
-                            case 2:
-                                return new Point(MathConverter.ConvertToDouble(x[0].Evaluate(values)).Value, MathConverter.ConvertToDouble(x[1].Evaluate(values)).Value);
-                            default:
-                                throw new NotSupportedException(string.Format("You supplied {0} values; Point supports only two", x.Length));
-                        }
-                    case "System.Boolean":
-                        switch (x.Length)
-                        {
-                            case 1:
-                                return (bool?)x[0].Evaluate(values);
-                            default:
-                                throw new NotSupportedException(string.Format("You supplied {0} values; Boolean supports only one", x.Length));
-                        }
-                    case "System.String":
-                        switch (x.Length)
-                        {
-                            case 1:
-                                var val = x[0].Evaluate(values);
-                                if (val is string)
-                                    return val;
-                                else if (val == null)
-                                    return null;
-                                else
-                                    return val.ToString();
-                            default:
-                                throw new NotSupportedException(string.Format("You supplied {0} values; string supports only one", x.Length));
-                        }
-                    case "System.Uri":
-                        switch (x.Length)
-                        {
-                            case 1:
-                                var val = x[0].Evaluate(values);
-                                if (val is string)
-                                    return new Uri(val as string);
-                                else if (val == null)
-                                    return null;
-                                else
-                                    return new Uri(val.ToString());
-                            default:
-                                throw new NotSupportedException($"You supplied {values.Length} values; Uri supports only one");
-                        }
-
-                    case "System.Single":
-                        convert = p => System.Convert.ToSingle(p);
-                        break;
-                    case "System.Int32":
-                        convert = p => System.Convert.ToInt32(p);
-                        break;
-                    case "System.Int64":
-                        convert = p => System.Convert.ToInt64(p);
-                        break;
-                    case "System.Decimal":
-                        convert = p => System.Convert.ToDecimal(p);
-                        break;
-                    case "System.Byte":
-                        convert = p => System.Convert.ToByte(p);
-                        break;
-                    case "System.SByte":
-                        convert = p => System.Convert.ToSByte(p);
-                        break;
-                    case "System.Char":
-                        convert = p => (char)System.Convert.ToInt32(p);
-                        break;
-                    case "System.Int16":
-                        convert = p => System.Convert.ToInt16(p);
-                        break;
-                    case "System.UInt16":
-                        convert = p => System.Convert.ToUInt16(p);
-                        break;
-                    case "System.UInt32":
-                        convert = p => System.Convert.ToUInt32(p);
-                        break;
-                    case "System.UInt64":
-                        convert = p => System.Convert.ToUInt64(p);
-                        break;
-                    case "System.Windows.Media.Geometry":
-                        switch (x.Length)
-                        {
-                            case 1:
-                                var val = x[0].Evaluate(values);
-                                if (val is string s)
-                                    return Geometry.Parse(s);
-                                else if (val == null)
-                                    return null;
-                                else
-                                    return Geometry.Parse($"{val}");
-                            default:
-                                throw new NotSupportedException($"You supplied {values.Length} values; Path supports only one");
-                        }
-                    default:
-                        if (targetType == typeof(double?))
-                        {
-                            return MathConverter.ConvertToDouble(x[0].Evaluate(values));
-                        }
-
-                        // We don't know what to return, so let's evaluate the parameter and try to convert it.
-                        var evaluatedValue = x[0].Evaluate(values);
-                        if ((targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(Nullable<>)))
-                        {
-                            // We're supposed to return a Nullable<T> where T : struct
-                            if (evaluatedValue == null)
-                                return null;
-                            else
-                                return System.Convert.ChangeType(evaluatedValue, targetType.GetGenericArguments()[0]);
-                        }
-
-                        if ((targetType.IsClass && ReferenceEquals(evaluatedValue, null)) || (!ReferenceEquals(evaluatedValue, null) && targetType.IsAssignableFrom(evaluatedValue.GetType())))
-                        {
-                            return evaluatedValue;
-                        }
-                        else if (targetType is IConvertible)
-                        {
-                            return System.Convert.ChangeType(evaluatedValue, targetType);
-                        }
-                        else
-                        {
-                            var converter = TypeDescriptor.GetConverter(targetType);
-
-                            if (converter.CanConvertFrom(evaluatedValue?.GetType() ?? typeof(object)))
-                            {
-                                return converter.ConvertFrom(evaluatedValue);
-                            }
-
-                            // Welp, we can't convert this value... O well.
-                            return evaluatedValue;
-                        }
-                }
-                var value = x[0].Evaluate(values);
-                if (value == null)
-                    return null;
-                else
-                    return convert(ConvertToDouble(value).Value);
-            }
-            else if (parameter == null)
-            {
-                switch (targetType.FullName)
-                {
-                    case "System.Object":
-                        switch (values.Length)
-                        {
-                            case 1:
-                                return ConvertToObject(values[0]);
-                            default:
-                                throw new NotSupportedException($"You supplied {values.Length} values; Object supports only one or one");
-                        }
-                    case "System.Double":
-                        switch (values.Length)
-                        {
-                            case 1:
-                                return ConvertToDouble(values[0]);
-                            default:
-                                throw new NotSupportedException($"You supplied {values.Length} values; Double supports only one or one");
-                        }
-                    case "System.Windows.CornerRadius":
-                        switch (values.Length)
-                        {
-                            case 1:
-                                return new CornerRadius(ConvertToDouble(values[0]).Value);
-                            case 4:
-                                return new CornerRadius(ConvertToDouble(values[0]).Value, ConvertToDouble(values[1]).Value, ConvertToDouble(values[2]).Value, ConvertToDouble(values[3]).Value);
-                            default:
-                                throw new NotSupportedException($"You supplied {values.Length} values; GridLength supports only one or four");
-                        }
-                    case "System.Windows.GridLength":
-                        switch (values.Length)
-                        {
-                            case 1:
-                                return new GridLength(ConvertToDouble(values[0]).Value);
-                            default:
-                                throw new NotSupportedException($"You supplied {values.Length} values; GridLength supports only one");
-                        }
-                    case "System.Windows.Thickness":
-                        switch (values.Length)
-                        {
-                            case 1:
-                                return new Thickness(ConvertToDouble(values[0]).Value);
-                            case 2:
-                                return new Thickness(ConvertToDouble(values[0]).Value, ConvertToDouble(values[1]).Value, ConvertToDouble(values[0]).Value, ConvertToDouble(values[1]).Value);
-                            case 4:
-                                return new Thickness(ConvertToDouble(values[0]).Value, ConvertToDouble(values[1]).Value, ConvertToDouble(values[2]).Value, ConvertToDouble(values[3]).Value);
-                            default:
-                                throw new NotSupportedException($"You supplied {values.Length} values; Thickness supports only one, two, or four");
-                        }
-                    case "System.Windows.Rect":
-                        switch (values.Length)
-                        {
-                            case 4:
-                                return new Rect(ConvertToDouble(values[0]).Value, ConvertToDouble(values[1]).Value, ConvertToDouble(values[2]).Value, ConvertToDouble(values[3]).Value);
-                            default:
-                                throw new NotSupportedException($"You supplied {values.Length} values; Rect supports only four");
-                        }
-                    case "System.Windows.Size":
-                        switch (values.Length)
-                        {
-                            case 2:
-                                return new Size(ConvertToDouble(values[0]).Value, ConvertToDouble(values[1]).Value);
-                            default:
-                                throw new NotSupportedException($"You supplied {values.Length} values; Size supports only two");
-                        }
-                    case "System.Windows.Point":
-                        switch (values.Length)
-                        {
-                            case 2:
-                                return new Point(ConvertToDouble(values[0]).Value, ConvertToDouble(values[1]).Value);
-                            default:
-                                throw new NotSupportedException($"You supplied {values.Length} values; Point supports only two");
-                        }
-                    case "System.Boolean":
-                        switch (values.Length)
-                        {
-                            case 1:
-                                if (values[0] is string)
-                                {
-                                    return bool.Parse(values[0] as string);
-                                }
-                                return (bool?)values[0];
-                            default:
-                                throw new NotSupportedException($"You supplied {values.Length} values; boolean supports only one");
-                        }
-                    case "System.String":
-                        switch (values.Length)
-                        {
-                            case 1:
-                                if (values[0] is string)
-                                    return values[0];
-                                else if (values[0] == null)
-                                    return null;
-                                else
-                                    return values[0].ToString();
-                            default:
-                                throw new NotSupportedException($"You supplied {values.Length} values; string supports only one");
-                        }
-                    case "System.Uri":
-                        switch (values.Length)
-                        {
-                            case 1:
-                                if (values[0] is string)
-                                    return new Uri(values[0] as string);
-                                else if (values[0] == null)
-                                    return null;
-                                else
-                                    return new Uri(values[0].ToString());
-                            default:
-                                throw new NotSupportedException($"You supplied {values.Length} values; Uri supports only one");
-                        }
-                    case "System.Single":
-                        convert = p => System.Convert.ToSingle(p);
-                        break;
-                    case "System.Int32":
-                        convert = p => System.Convert.ToInt32(p);
-                        break;
-                    case "System.Int64":
-                        convert = p => System.Convert.ToInt64(p);
-                        break;
-                    case "System.Decimal":
-                        convert = p => System.Convert.ToDecimal(p);
-                        break;
-                    case "System.Byte":
-                        convert = p => System.Convert.ToByte(p);
-                        break;
-                    case "System.SByte":
-                        convert = p => System.Convert.ToSByte(p);
-                        break;
-                    case "System.Char":
-                        convert = p => (char)System.Convert.ToInt32(p);
-                        break;
-                    case "System.Int16":
-                        convert = p => System.Convert.ToInt16(p);
-                        break;
-                    case "System.UInt16":
-                        convert = p => System.Convert.ToUInt16(p);
-                        break;
-                    case "System.UInt32":
-                        convert = p => System.Convert.ToUInt32(p);
-                        break;
-                    case "System.UInt64":
-                        convert = p => System.Convert.ToUInt64(p);
-                        break;
-                    default:
-                        switch (values.Length)
-                        {
-                            case 1:
-                                if (targetType == typeof(double?))
-                                {
-                                    return ConvertToDouble(values[0]);
-                                }
-
-                                if ((targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(Nullable<>)))
-                                {
-                                    // We're supposed to return a Nullable<T> where T : struct
-                                    if (values[0] == null)
-                                        return null;
-                                    else
-                                        return System.Convert.ChangeType(values[0], targetType.GetGenericArguments()[0]);
-                                }
-
-                                return System.Convert.ChangeType(values[0], targetType);
-                                //throw new NotSupportedException(string.Format("You cannot convert to a {0}", targetType.Name));
-                            default:
-                                throw new NotSupportedException($"You supplied {values.Length} values; {targetType.FullName} supports only one");
-                        }
-                }
-                switch (values.Length)
-                {
-                    case 1:
-                        var value = values[0];
-                        if (value == null)
-                            return null;
-                        else
-                            return convert(ConvertToDouble(value).Value);
-                    default:
-                        throw new NotSupportedException($"You supplied {values.Length} values; {targetType.FullName} supports only one");
-                }
-
-            }
-            else
-            {
-                throw new ArgumentException("The Converter Parameter must be a string.", "parameter");
-            }
-        }
-        /// <summary>
-        /// Parses an expression into a syntax tree that can be evaluated later.
-        /// This method keeps a cache of parsed results, so it doesn't have to parse the same expression twice.
-        /// </summary>
-        /// <param name="Parameter">The parameter that we're parsing</param>
-        /// <returns>A syntax tree that can be evaluated later.</returns>
-        internal AbstractSyntaxTree[] ParseParameter(string Parameter)
-        {
-            if (CachedResults == null)
-                return Parser.Parse(Parameter);
-
-            return CachedResults.ContainsKey(Parameter) ? CachedResults[Parameter] : (CachedResults[Parameter] = Parser.Parse(Parameter));
         }
 
         /// <summary>
@@ -463,96 +146,141 @@ namespace HexInnovation
         [DefaultValue(true)]
         public bool UseCache
         {
-            get
-            {
-                return CachedResults != null;
-            }
+            get => _cachedResults != null;
             set
             {
-                if (value && CachedResults == null)
-                    CachedResults = new Dictionary<string, AbstractSyntaxTree[]>();
+                if (value && _cachedResults == null)
+                    _cachedResults = new Dictionary<string, AbstractSyntaxTree[]>();
                 else if (!value)
-                    CachedResults = null;
+                    _cachedResults = null;
             }
         }
 
         /// <summary>
-        /// Converts a number to an object.
+        /// A dictionary which stores a cache of AbstractSyntaxTrees for given ConverterParameter strings.
+        /// This eliminates the need to parse the same statement over and over.
         /// </summary>
-        /// <param name="parameter">The value we're converting to an object.</param>
-        /// <returns>The number, converted to an object.</returns>
-        public static object ConvertToObject(object parameter)
-        {
-            if (parameter == null)
-                return null;
-            var paramType = parameter.GetType().FullName;
-            switch (paramType)
-            {
-                case "System.TimeSpan":
-                case "System.DateTime":
-                case "System.String":
-                case "System.Boolean":
-                    return parameter;
-                case "System.Char":
-                    return System.Convert.ToDouble((int)(char)parameter);
-                case "System.Byte":
-                    return System.Convert.ToDouble((byte)parameter);
-                case "System.SByte":
-                    return System.Convert.ToDouble((sbyte)parameter);
-                case "System.Decimal":
-                    return System.Convert.ToDouble((decimal)parameter);
-                case "System.Int16":
-                    return System.Convert.ToDouble((short)parameter);
-                case "System.UInt16":
-                    return System.Convert.ToDouble((ushort)parameter);
-                case "System.Int32":
-                    return System.Convert.ToDouble((int)parameter);
-                case "System.UInt32":
-                    return System.Convert.ToDouble((uint)parameter);
-                case "System.Int64":
-                    return System.Convert.ToDouble((long)parameter);
-                case "System.UInt64":
-                    return System.Convert.ToDouble((ulong)parameter);
-                case "System.Single":
-                    return System.Convert.ToDouble((float)parameter);
-                case "System.Double":
-                    return (double)parameter;
-                case "System.Windows.GridLength":
-                    return ((GridLength)parameter).Value;
-                default:
-                    if (parameter == DependencyProperty.UnsetValue)
-                    {
-                        return null;
-                    }
+        private Dictionary<string, AbstractSyntaxTree[]> _cachedResults = new Dictionary<string, AbstractSyntaxTree[]>();
+#if XAMARIN
+        private static readonly Dictionary<Type, XamarinTypeConverter> XamarinTypeConverters = new Dictionary<Type, XamarinTypeConverter>();
+#endif
 
-                    return parameter;
-                    //throw new NotSupportedException(paramType + " cannot be converted to singleton.");
-            }
+        /// <summary>
+        /// The conversion for a single value.
+        /// </summary>
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            return Convert(new[] { value }, targetType, parameter, culture);
         }
-        public static double? ConvertToDouble(object parameter)
+        /// <summary>
+        /// The actual convert method, for zero or more parameters.
+        /// </summary>
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
-            if (parameter is double)
-                return (double)parameter;
+            var sanitizedValues = values?.Select((v, i) => SanitizeBinding(v, i, values.Length, parameter, targetType)).ToArray();
 
-            if (parameter == null)
-                return null;
+            List<object> evaluatedValues;
 
-            double v;
-            if (parameter is string && double.TryParse(parameter as string, NumberStyles.Number, CultureInfo.InvariantCulture, out v))
+            if (parameter is string param)
             {
-                return v;
+                // We start by evaluating the parameter passed in. For certain types (e.g. Rect), we allow multiple values to be specified in the parameter, separated by either commas or semicolons.
+                // So the parameter "x,2x,x+y,2y" has four parts, which each parse to their own AbstractSyntaxTree: "x", "2x", "x+y", and "2y".
+                var parameterParts = ParseParameter(param);
+
+                // We now compute the evaluated values. In the above example, the parts would evaluate to four doubles: values[0], 2*values[0], values[0]+values[1], and 2*values[1].
+                try
+                {
+                    evaluatedValues = parameterParts.Select(p => p.Evaluate(culture, sanitizedValues)).ToList();
+                }
+                catch (NodeEvaluationException ex)
+                {
+                    throw new EvaluationException(param, values, ex);
+                }
             }
+            else if (parameter == null)
+            {
+                // If there is no parameter, we'll just use the value(s) specified by the (Multi)Binding.
+                // In this case, MathConverter is merely used for type conversion (e.g. turning 4 doubles into a Rect).
+                evaluatedValues = sanitizedValues?.ToList() ?? new List<object>();
+            }
+            else
+            {
+                throw new ArgumentException("The Converter Parameter must be a string.", nameof(parameter));
+            }
+
+            // Now if there are more than one value, we will simply merge the values with commas, and use TypeConverter to handle the conversion to the appropriate type.
+            // We do this in invariant culture to ensure that any type conversion (which must happen in InvariantCulture) succeeds.
+            var stringJoinCulture = targetType == typeof(string) ? culture : CultureInfo.InvariantCulture;
+            var finalAnswerToConvert = evaluatedValues?.Count == 1 ? evaluatedValues[0] : string.Join(",", evaluatedValues.Select(p => string.Format(stringJoinCulture, "{0}", p)).MyToArray());
+
+            // At this point, we have now computed our final answer.
+            // However, we might need to do standard type conversion to convert it to a different type.
+
+            // We don't need to convert null, and we can't convert if there's no type specified that we need to convert to.
+            if (finalAnswerToConvert == null || targetType == null)
+                return finalAnswerToConvert;
+
+            // We might not need to convert.
+            if (targetType.IsInstanceOfType(finalAnswerToConvert))
+            {
+                return finalAnswerToConvert;
+            }
+
+            // We need to convert the answer to the appropriate type. Let's start with the default TypeConverter.
+            var converter = TypeDescriptor.GetConverter(targetType);
+
+            if (converter.CanConvertFrom(finalAnswerToConvert.GetType()))
+            {
+                // We don't want to use the CultureInfo here when converting, because Rect conversion is broken in some cultures.
+                // We'll keep these conversions working in InvariantCulture.
+                return converter.ConvertFrom(null, CultureInfo.InvariantCulture, finalAnswerToConvert);
+            }
+
+            // We know we're not returning null... If we're trying to convert to a Nullable<SomeStruct>, let's just convert to SomeStruct instead.
+            var newTarget = Nullable.GetUnderlyingType(targetType);
+            if (newTarget != null)
+            {
+                targetType = newTarget;
+            }
+
+#if XAMARIN
+            // Let's try Xamarin.Forms.TypeConverter
+            var typeConverter = GetXamarinTypeConverter(targetType);
+
+            if (typeConverter != null)
+            {
+                // Xamarin.Forms.TypeConverters only convert from Invariant Strings. All other conversions are deprecated.
+                string convertFrom = finalAnswerToConvert as string ?? $"{finalAnswerToConvert}";
+                return typeConverter.ConvertFromInvariantString(convertFrom);
+            }
+#endif
 
             try
             {
-                return System.Convert.ChangeType(parameter, typeof(double)) as double?;
+                if (Operator.DoesImplicitConversionExist(finalAnswerToConvert.GetType(), targetType, true))
+                {
+                    // The default TypeConverter doesn't support this conversion. Let's try an implicit conversion.
+                    return Operator.DoImplicitConversion(finalAnswerToConvert, targetType);
+                }
+                else if (CompatibilityExtensions.IsIConvertible(finalAnswerToConvert))
+                {
+                    if (targetType == typeof(char))
+                    {
+                        // We'll add a special cast for conversions to char, where we'll convert to int first.
+                        return System.Convert.ToChar((int)System.Convert.ChangeType(finalAnswerToConvert, typeof(int)));
+                    }
+                    else
+                    {
+                        // Let's try System.Convert. This might throw an exception.
+                        return System.Convert.ChangeType(finalAnswerToConvert, targetType);
+                    }
+                }
             }
-            catch (InvalidCastException ex)
-            {
-                throw new Exception($"Failed to convert object of type {parameter.GetType().FullName} to double", ex);
-            }
+            catch (InvalidCastException) { }
+
+            // Welp, we can't convert this value... Oh well.
+            return finalAnswerToConvert;
         }
-        
         /// <summary>
         /// Don't call this method, as it is not supported.
         /// </summary>
@@ -568,6 +296,41 @@ namespace HexInnovation
         {
             // WE CAN'T CONVERT BACK
             throw new NotSupportedException();
+        }
+#if XAMARIN
+        private static XamarinTypeConverter GetXamarinTypeConverter(Type targetType)
+        {
+            if (XamarinTypeConverters.ContainsKey(targetType))
+            {
+                return XamarinTypeConverters[targetType];
+            }
+
+            foreach (var attribute in targetType.GetCustomAttributes<TypeConverterAttribute>())
+            {
+                var converterType = Type.GetType(attribute.ConverterTypeName, false);
+                if (converterType != null)
+                {
+                    return XamarinTypeConverters[targetType] = (XamarinTypeConverter)Activator.CreateInstance(converterType);
+                }
+            }
+
+            return XamarinTypeConverters[targetType] = null;
+        }
+#endif
+
+
+        /// <summary>
+        /// Parses an expression into a syntax tree that can be evaluated later.
+        /// This method keeps a cache of parsed results, so it doesn't have to parse the same expression twice.
+        /// </summary>
+        /// <param name="parameter">The parameter that we're parsing</param>
+        /// <returns>A syntax tree that can be evaluated later.</returns>
+        internal AbstractSyntaxTree[] ParseParameter(string parameter)
+        {
+            if (_cachedResults == null)
+                return Parser.Parse(CustomFunctions, parameter);
+
+            return _cachedResults.ContainsKey(parameter) ? _cachedResults[parameter] : (_cachedResults[parameter] = Parser.Parse(CustomFunctions, parameter));
         }
     }
 }

@@ -2,18 +2,17 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+#if !XAMARIN
 using System.Windows;
+#endif
 
 namespace HexInnovation
 {
     class Parser : IDisposable
     {
-        public static AbstractSyntaxTree[] Parse(string expression)
+        public static AbstractSyntaxTree[] Parse(CustomFunctionCollection customFunctions, string expression)
         {
-            using (var p = new Parser(expression))
+            using (var p = new Parser(customFunctions, expression))
             {
                 try
                 {
@@ -34,34 +33,40 @@ namespace HexInnovation
             }
         }
 
-
-        private Scanner scanner;
-        private Parser(string expression)
+        private static string ErrorWrongTokenType(TokenType type)
         {
-            scanner = new Scanner(this, expression);
+            return $"MathConverter internal exception: if TokenType is {type}, the token must be a {(type == TokenType.InterpolatedString ? nameof(InterpolatedStringToken) : nameof(LexicalToken))}.";
+        }
+
+        private readonly Scanner _scanner;
+        private readonly CustomFunctionCollection _customFunctions;
+        private Parser(CustomFunctionCollection customFunctions, string expression)
+        {
+            _scanner = new Scanner(this, expression);
+            _customFunctions = customFunctions;
         }
         internal AbstractSyntaxTree ParseInterpolatedStringArg()
         {
             var result = Conditional();
 
-            var t = scanner.Peek();
+            var t = _scanner.Peek();
 
             switch (t.TokenType)
             {
+                case TokenType.Semicolon:
                 case TokenType.RCurlyBracket:
                 case TokenType.Colon:
                     return result;
                 default:
-                    throw new ParsingException(scanner.Position, "Error parsing interpolated string. Could not find closing curly bracket (or a colon) after the argument.");
+                    throw new ParsingException(_scanner.Position, "Error parsing interpolated string. Could not find closing curly bracket (or a colon, comma, or semicolon) after the argument.");
             }
-
         }
         private IEnumerable<AbstractSyntaxTree> ConverterParameter()
         {
             while (true)
             {
                 var result = Conditional();
-                var t = scanner.GetToken();
+                var t = _scanner.GetToken();
 
                 switch (t.TokenType)
                 {
@@ -72,7 +77,7 @@ namespace HexInnovation
                         yield return result;
                         break;
                     default:
-                        throw new ParsingException(scanner.Position, "The conversion parameter could not be parsed to a valid string.");
+                        throw new ParsingException(_scanner.Position, "The conversion parameter could not be parsed to a valid string.");
                 }
             }
         }
@@ -82,22 +87,22 @@ namespace HexInnovation
         }
         private AbstractSyntaxTree Conditional(AbstractSyntaxTree e)
         {
-            var t = scanner.GetToken();
+            var t = _scanner.GetToken();
 
             switch (t.TokenType)
             {
                 case TokenType.QuestionMark:
                     var then = Conditional();
-                    t = scanner.GetToken();
+                    t = _scanner.GetToken();
                     switch (t.TokenType)
                     {
                         case TokenType.Colon:
                             return Conditional(new TernaryNode(e, then, Conditional()));
                         default:
-                            throw new ParsingException(scanner.Position, "Could not find the ':' to terminate the ternary ('?:') statement");
+                            throw new ParsingException(_scanner.Position, "Could not find the ':' to terminate the ternary ('?:') statement");
                     }
                 default:
-                    scanner.PutBackToken();
+                    _scanner.PutBackToken();
                     return e;
             }
         }
@@ -107,14 +112,14 @@ namespace HexInnovation
         }
         private AbstractSyntaxTree NullCoalescing(AbstractSyntaxTree e)
         {
-            var t = scanner.GetToken();
+            var t = _scanner.GetToken();
 
             switch (t.TokenType)
             {
                 case TokenType.DoubleQuestionMark:
                     return NullCoalescing(new NullCoalescingNode(e, ConditionalOr()));
                 default:
-                    scanner.PutBackToken();
+                    _scanner.PutBackToken();
                     return e;
             }
         }
@@ -124,14 +129,14 @@ namespace HexInnovation
         }
         private AbstractSyntaxTree ConditionalOr(AbstractSyntaxTree e)
         {
-            var t = scanner.GetToken();
+            var t = _scanner.GetToken();
 
             switch (t.TokenType)
             {
                 case TokenType.Or:
                     return ConditionalOr(new OrNode(e, ConditionalAnd()));
                 default:
-                    scanner.PutBackToken();
+                    _scanner.PutBackToken();
                     return e;
             }
         }
@@ -141,14 +146,14 @@ namespace HexInnovation
         }
         private AbstractSyntaxTree ConditionalAnd(AbstractSyntaxTree e)
         {
-            var t = scanner.GetToken();
+            var t = _scanner.GetToken();
 
             switch (t.TokenType)
             {
                 case TokenType.And:
                     return ConditionalAnd(new AndNode(e, Equality()));
                 default:
-                    scanner.PutBackToken();
+                    _scanner.PutBackToken();
                     return e;
             }
         }
@@ -158,7 +163,7 @@ namespace HexInnovation
         }
         private AbstractSyntaxTree Equality(AbstractSyntaxTree e)
         {
-            var t = scanner.GetToken();
+            var t = _scanner.GetToken();
 
             switch (t.TokenType)
             {
@@ -167,7 +172,7 @@ namespace HexInnovation
                 case TokenType.NotEqual:
                     return Equality(new NotEqualNode(e, Relational()));
                 default:
-                    scanner.PutBackToken();
+                    _scanner.PutBackToken();
                     return e;
             }
         }
@@ -177,7 +182,7 @@ namespace HexInnovation
         }
         private AbstractSyntaxTree Relational(AbstractSyntaxTree e)
         {
-            var t = scanner.GetToken();
+            var t = _scanner.GetToken();
 
             switch (t.TokenType)
             {
@@ -190,7 +195,7 @@ namespace HexInnovation
                 case TokenType.GreaterThanEqual:
                     return Relational(new GreaterThanEqualNode(e, Additive()));
                 default:
-                    scanner.PutBackToken();
+                    _scanner.PutBackToken();
                     return e;
             }
         }
@@ -200,7 +205,7 @@ namespace HexInnovation
         }
         private AbstractSyntaxTree Additive(AbstractSyntaxTree e)
         {
-            var t = scanner.GetToken();
+            var t = _scanner.GetToken();
 
             switch (t.TokenType)
             {
@@ -209,7 +214,7 @@ namespace HexInnovation
                 case TokenType.Minus:
                     return Additive(new SubtractNode(e, Multiplicative()));
                 default:
-                    scanner.PutBackToken();
+                    _scanner.PutBackToken();
                     return e;
             }
         }
@@ -219,7 +224,7 @@ namespace HexInnovation
         }
         private AbstractSyntaxTree Multiplicative(AbstractSyntaxTree e)
         {
-            var t = scanner.GetToken();
+            var t = _scanner.GetToken();
 
             switch (t.TokenType)
             {
@@ -235,10 +240,10 @@ namespace HexInnovation
                 case TokenType.Lexical:
                 case TokenType.LBracket:
                 case TokenType.LParen:
-                    scanner.PutBackToken();
+                    _scanner.PutBackToken();
                     return Multiplicative(new MultiplyNode(e, Exponent()));
                 default:
-                    scanner.PutBackToken();
+                    _scanner.PutBackToken();
                     return e;
             }
         }
@@ -249,7 +254,7 @@ namespace HexInnovation
         }
         private AbstractSyntaxTree Exponent(AbstractSyntaxTree e)
         {
-            var t = scanner.GetToken();
+            var t = _scanner.GetToken();
 
             switch (t.TokenType)
             {
@@ -258,26 +263,33 @@ namespace HexInnovation
                 case TokenType.Number:
                     if (e is VariableNode)
                     {
-                        return Exponent(new ExponentNode(e, new ConstantNumberNode(double.Parse((t as LexicalToken).Lex, NumberStyles.Number, CultureInfo.InvariantCulture))));
+                        if (!(t is LexicalToken lex))
+                            throw new ArgumentException(ErrorWrongTokenType(t.TokenType));
+                        
+                        return Exponent(new ExponentNode(e, new ConstantNumberNode(double.Parse(lex.Lex, NumberStyles.Number, CultureInfo.InvariantCulture))));
                     }
                     else
                     {
-                        scanner.PutBackToken();
+                        _scanner.PutBackToken();
                         return e;
                     }
                 default:
-                    scanner.PutBackToken();
+                    _scanner.PutBackToken();
                     return e;
             }
         }
         private AbstractSyntaxTree Primary()
         {
-            var t = scanner.GetToken();
+            var t = _scanner.GetToken();
 
             switch (t.TokenType)
             {
                 case TokenType.Number:
-                    return new ConstantNumberNode(double.Parse((t as LexicalToken).Lex, NumberStyles.Number, CultureInfo.InvariantCulture));
+                    if (!(t is LexicalToken numToken))
+                        throw new ArgumentException(ErrorWrongTokenType(t.TokenType));
+                    return new ConstantNumberNode(double.Parse(numToken.Lex, NumberStyles.Number, CultureInfo.InvariantCulture));
+                case TokenType.Plus:
+                    return Primary();
                 case TokenType.Minus:
                     return new NegativeNode(Primary());
                 case TokenType.Not:
@@ -289,18 +301,18 @@ namespace HexInnovation
                 case TokenType.Z:
                     return new VariableNode(2);
                 case TokenType.String:
-                    return new StringNode((t as LexicalToken).Lex);
+                    if (!(t is LexicalToken strToken))
+                        throw new ArgumentException(ErrorWrongTokenType(t.TokenType));
+                    return new StringNode(strToken.Lex);
                 case TokenType.InterpolatedString:
-                    var token = t as InterpolatedStringToken;
-                    return new FormulaNodeN("Format", FormulaNodeN.Format, new AbstractSyntaxTree[] { new StringNode(token.Lex) }.Union(token.Arguments));
+                    if (!(t is InterpolatedStringToken token))
+                        throw new ArgumentException(ErrorWrongTokenType(t.TokenType));
+                    return new FormatFunction { FunctionName = "Format", Arguments = new AbstractSyntaxTree[] { new StringNode(token.Lex) }.Concat(token.Arguments).ToArray() };
 
                 case TokenType.Lexical:
-                    var lex = (t as LexicalToken).Lex;
-                    Func<object> formula0 = null;
-                    Func<double, double> formula1 = null;
-                    Func<object, object> formula1_obj = null;
-                    Func<object, object, object> formula2 = null;
-                    Func<IEnumerable<object>, object> formulaN = null;
+                    if (!(t is LexicalToken lexToken))
+                        throw new ArgumentException(ErrorWrongTokenType(t.TokenType));
+                    var lex = lexToken.Lex;
                     switch (lex.ToLower())
                     {
                         case "null":
@@ -314,307 +326,145 @@ namespace HexInnovation
                         case "false":
                             return new ValueNode(false);
                         default:
-                            switch (lex.ToLower())
+                            if (_customFunctions.TryGetFunction(lex, out var function))
                             {
-                                case "now":
-                                    formula0 = () => DateTime.Now;
-                                    break;
-                                case "cos":
-                                    formula1 = Math.Cos;
-                                    break;
-                                case "sin":
-                                    formula1 = Math.Sin;
-                                    break;
-                                case "tan":
-                                    formula1 = Math.Tan;
-                                    break;
-                                case "abs":
-                                    formula1 = Math.Abs;
-                                    break;
-                                case "acos":
-                                case "arccos":
-                                    formula1 = Math.Acos;
-                                    break;
-                                case "asin":
-                                case "arcsin":
-                                    formula1 = Math.Asin;
-                                    break;
-                                case "atan":
-                                case "arctan":
-                                    formula1 = Math.Atan;
-                                    break;
-                                case "ceil":
-                                case "ceiling":
-                                    formula1 = Math.Ceiling;
-                                    break;
-                                case "floor":
-                                    formula1 = Math.Floor;
-                                    break;
-                                case "sqrt":
-                                    formula1 = Math.Sqrt;
-                                    break;
-                                case "degrees":
-                                case "deg":
-                                    formula1 = x => x / Math.PI * 180;
-                                    break;
-                                case "radians":
-                                case "rad":
-                                    formula1 = x => x / 180 * Math.PI;
-                                    break;
-                                case "tolower":
-                                case "lcase":
-                                    formula1_obj = x => x == null ? null : $"{x}".ToLowerInvariant();
-                                    break;
-                                case "toupper":
-                                case "ucase":
-                                    formula1_obj = x => x == null ? null : $"{x}".ToUpperInvariant();
-                                    break;
-                                case "startswith":
-                                    formula2 = (x, y) => x is string str1 && (y is string || y?.ToString().Length > 0) ? str1.StartsWith($"{y}") : new bool?();
-                                    break;
-                                case "endswith":
-                                    formula2 = (x, y) => x is string str1 && (y is string || y?.ToString().Length > 0) ? str1.EndsWith($"{y}") : new bool?();
-                                    break;
-                                case "visibleorcollapsed":
-                                    formula1_obj = x => x is bool && (bool)x == true ? Visibility.Visible : Visibility.Collapsed;
-                                    break;
-                                case "visibleorhidden":
-                                    formula1_obj = x => x is bool && (bool)x == true ? Visibility.Visible : Visibility.Hidden;
-                                    break;
-                                case "round":
-                                    formula2 = (x, y) =>
+                                if (function is ZeroArgFunction func0)
+                                {
+                                    string ex() => $"{lex} is a function that takes zero arguments. You must call it like this: \"{lex}()\"";
+
+                                    if (_scanner.GetToken().TokenType != TokenType.LParen)
+                                        throw new ParsingException(_scanner.Position, ex());
+                                    if (_scanner.GetToken().TokenType != TokenType.RParen)
+                                        throw new ParsingException(_scanner.Position, ex());
+
+                                    return func0;
+                                }
+                                else if (function is OneArgFunction func1)
+                                {
+                                    // Create a formula1.
+                                    string ex () => $"{lex} is a formula that takes one argument. You must specify the arguments like this: \"{lex}(3)\"";
+
+                                    if (_scanner.GetToken().TokenType != TokenType.LParen)
+                                        throw new ParsingException(_scanner.Position, ex());
+
+                                    try
                                     {
-                                        var a = MathConverter.ConvertToDouble(x);
-                                        var b = MathConverter.ConvertToDouble(y);
-                                        if (a.HasValue && b.HasValue)
-                                        {
-                                            if (b.Value == (int)b.Value)
-                                                return Math.Round(a.Value, (int)b.Value);
-                                            else
-                                                throw new Exception($"Error calling Math.Round({a}, {y}):\r\n{y} is not an integer.");
-                                        }
-                                        else
-                                        {
-                                            return null;
-                                        }
-                                    };
-                                    break;
-                                case "atan2":
-                                case "arctan2":
-                                    formula2 = (x, y) =>
+                                        func1.Argument = Conditional();
+                                    }
+                                    catch (Exception e)
                                     {
-                                        var a = MathConverter.ConvertToDouble(x);
-                                        var b = MathConverter.ConvertToDouble(y);
-                                        if (a.HasValue && b.HasValue)
-                                            return Math.Atan2(a.Value, b.Value);
-                                        else
-                                            return null;
-                                    };
-                                    break;
-                                case "log":
-                                    formula2 = (x, y) =>
+                                        throw new ParsingException(_scanner.Position, ex(), new Exception(ex(), e));
+                                    }
+
+                                    if (_scanner.GetToken().TokenType != TokenType.RParen)
+                                        throw new ParsingException(_scanner.Position, ex());
+
+                                    return func1;
+                                }
+                                if (function is TwoArgFunction func2)
+                                {
+                                    // Create a formula2.
+                                    string ex() => $"{lex} is a formula that takes two arguments. You must specify the arguments like this: \"{lex}(3;2)\"";
+
+                                    if (_scanner.GetToken().TokenType != TokenType.LParen)
+                                        throw new ParsingException(_scanner.Position, ex());
+
+                                    try
                                     {
-                                        var a = MathConverter.ConvertToDouble(x);
-                                        var b = MathConverter.ConvertToDouble(y);
-                                        if (a.HasValue && b.HasValue)
-                                            return Math.Log(a.Value, b.Value);
-                                        else
-                                            return null;
-                                    };
-                                    break;
-                                case "isnull":
-                                case "ifnull":
-                                    formula2 = (x, y) => ReferenceEquals(x, null) ? y : x;
-                                    break;
-                                case "and":
-                                    formulaN = FormulaNodeN.And;
-                                    break;
-                                case "nor":
-                                    formulaN = FormulaNodeN.Nor;
-                                    break;
-                                case "or":
-                                    formulaN = FormulaNodeN.Or;
-                                    break;
-                                case "max":
-                                    formulaN = FormulaNodeN.Max;
-                                    break;
-                                case "min":
-                                    formulaN = FormulaNodeN.Min;
-                                    break;
-                                case "avg":
-                                case "average":
-                                    formulaN = FormulaNodeN.Average;
-                                    break;
-                                case "format":
-                                    formulaN = FormulaNodeN.Format;
-                                    break;
-                                case "concat":
-                                    formulaN = FormulaNodeN.Concat;
-                                    break;
-                                case "join":
-                                    formulaN = FormulaNodeN.Join;
-                                    break;
-                                case "contains":
-                                    formula2 = (x, y) =>
+                                        func2.Argument1 = Conditional();
+                                    }
+                                    catch (Exception inner)
                                     {
-                                        if (x is IEnumerable<dynamic>)
+                                        throw new ParsingException(_scanner.Position, ex(), inner);
+                                    }
+
+                                    if (_scanner.GetToken().TokenType == TokenType.Semicolon)
+                                    {
+                                        try
                                         {
-                                            return (x as IEnumerable<dynamic>).Contains(y);
+                                            func2.Argument2 = Conditional();
                                         }
-                                        else if (x is string str1 && (y is string || $"{y}".Length > 0))
+                                        catch (Exception inner)
                                         {
-                                            return str1.Contains($"{y}");
+                                            throw new ParsingException(_scanner.Position, ex(), inner);
                                         }
-                                        else
+
+                                        if (_scanner.GetToken().TokenType == TokenType.RParen)
                                         {
-                                            return null;
+                                            return func2;
                                         }
-                                    };
-                                    break;
-                                default:
-                                    var err = $"{lex} is an invalid formula name";
-                                    throw new ParsingException(scanner.Position, err, new NotSupportedException(err));
-                            }
-                            break;
-                    }
+                                    }
+                                    throw new ParsingException(_scanner.Position, ex());
+                                }
+                                else if (function is ArbitraryArgFunction funcN)
+                                {
+                                    if (_scanner.GetToken().TokenType != TokenType.LParen)
+                                        throw new ParsingException(_scanner.Position, $"You must specify arguments for {lex}. Those arguments must be enclosed in parentheses.");
 
-                    if (formula0 != null)
-                    {
-                        var ex = $"{lex} is a formula that takes zero arguments. You must call it like this: \"{lex}()\"";
+                                    var trees = new List<AbstractSyntaxTree>();
 
-                        if (scanner.GetToken().TokenType != TokenType.LParen)
-                            throw new ParsingException(scanner.Position, ex);
-                        if (scanner.GetToken().TokenType != TokenType.RParen)
-                            throw new ParsingException(scanner.Position, ex);
+                                    if (_scanner.GetToken().TokenType == TokenType.RParen)
+                                    {
+                                        funcN.Arguments = new AbstractSyntaxTree[0];
+                                        return funcN;
+                                    }
+                                    else
+                                    {
+                                        _scanner.PutBackToken();
+                                    }
 
-                        return new FormulaNode0(lex, formula0);
-                    }
-                    else if (formula1 != null || formula1_obj != null)
-                    {
-                        // Create a formula1.
-                        var ex = $"{lex} is a formula that takes one argument.  You must specify the arguments like this: \"{lex}(3)\"";
+                                    while (true)
+                                    {
+                                        try
+                                        {
+                                            trees.Add(Conditional());
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            throw new ParsingException(_scanner.Position, $"Error parsing arguments for {lex}.", e);
+                                        }
 
-                        if (scanner.GetToken().TokenType != TokenType.LParen)
-                            throw new ParsingException(scanner.Position, ex);
-
-                        AbstractSyntaxTree arg;
-
-                        try
-                        {
-                            arg = Conditional();
-                        }
-                        catch (Exception e)
-                        {
-                            throw new ParsingException(scanner.Position, ex, new Exception(ex, e));
-                        }
-
-                        if (scanner.GetToken().TokenType != TokenType.RParen)
-                            throw new ParsingException(scanner.Position, ex);
-
-                        if (formula1 != null)
-                        {
-                            formula1_obj = x =>
-                            {
-                                var val = MathConverter.ConvertToDouble(x);
-                                if (val.HasValue)
-                                    return formula1(val.Value);
+                                        var type = _scanner.GetToken().TokenType;
+                                        switch (type)
+                                        {
+                                            case TokenType.RParen:
+                                                funcN.Arguments = trees.ToArray();
+                                                return funcN;
+                                            case TokenType.Semicolon:
+                                                break;
+                                            default:
+                                                throw new ParsingException(_scanner.Position, $"Error parsing arguments for {lex}. Invalid character: {type}. Expected either a comma, semicolon, or right parenthesis.");
+                                        }
+                                    }
+                                }
                                 else
-                                    return null;
-                            };
-                        }
-
-                        return new FormulaNode1(lex, formula1_obj, arg);
-                    }
-                    else if (formula2 != null)
-                    {
-                        // Create a formula2.
-                        var ex = $"{lex} is a formula that takes two argument.  You must specify the arguments like this: \"{lex}(3;2)\"";
-                        if (lex.ToLower() == "round")
-                            ex = "round is a formula that takes one or two argments. You must specify the argument(s) like this: round(4.693) or round(4.693;2)";
-
-                        if (scanner.GetToken().TokenType != TokenType.LParen)
-                            throw new ParsingException(scanner.Position, ex);
-
-                        AbstractSyntaxTree arg1, arg2;
-
-                        try
-                        {
-                            arg1 = Conditional();
-                        }
-                        catch (Exception inner)
-                        {
-                            throw new ParsingException(scanner.Position, ex, inner);
-                        }
-
-                        switch (scanner.GetToken().TokenType)
-                        {
-                            case TokenType.Semicolon:
-                                try
                                 {
-                                    arg2 = Conditional();
+                                    throw new ParsingException(_scanner.Position, $"{lex} is not a valid function. It must inherit from either {nameof(ZeroArgFunction)}, {nameof(OneArgFunction)}, {nameof(TwoArgFunction)}, or {nameof(ArbitraryArgFunction)}.");
                                 }
-                                catch (Exception inner)
-                                {
-                                    throw new ParsingException(scanner.Position, ex, inner);
-                                }
-
-                                if (scanner.GetToken().TokenType == TokenType.RParen)
-                                {
-                                    return new FormulaNode2(lex, formula2, arg1, arg2);
-                                }
-
-                                break;
-                            case TokenType.RParen:
-                                if (lex.ToLower() == "round")
-                                {
-                                    return new FormulaNode2(lex, formula2, arg1, new ConstantNumberNode(0));
-                                }
-                                break;
-                        }
-                        throw new ParsingException(scanner.Position, ex);
-                    }
-                    else
-                    {
-                        // Create a formulaN.
-                        if (scanner.GetToken().TokenType != TokenType.LParen)
-                            throw new ParsingException(scanner.Position, $"You must specify arguments for {lex}.  Those arguments must be enclosed in parentheses.");
-
-                        var trees = new List<AbstractSyntaxTree>();
-
-                        if (scanner.GetToken().TokenType == TokenType.RParen)
-                        {
-                            throw new ParsingException(scanner.Position, $"You must specify at least one argument for {lex}.");
-                        }
-                        else
-                        {
-                            scanner.PutBackToken();
-                        }
-
-                        while (true)
-                        {
-                            try
-                            {
-                                trees.Add(Conditional());
                             }
-                            catch (Exception e)
+                            else
                             {
-                                throw new ParsingException(scanner.Position, $"Error parsing arguments for {lex}.", e);
-                            }
+                                string err;
+                                var caseInsensitiveMatches = _customFunctions.Select(x => x.Name).Where(x => x?.ToLower() == lex.ToLower()).ToList();
 
-                            var type = scanner.GetToken().TokenType;
-                            switch (type)
-                            {
-                                case TokenType.RParen:
-                                    return new FormulaNodeN(lex, formulaN, trees);
-                                case TokenType.Semicolon:
-                                    break;
-                                default:
-                                    throw new ParsingException(scanner.Position, $"Error parsing arguments for {lex}. Invalid character: {type}. Expected either a comma, semicolon, or right parenthesis.");
+                                switch (caseInsensitiveMatches.Count)
+                                {
+                                    case 0:
+                                        err = $"{lex} is an invalid function name.";
+                                        break;
+                                    case 1:
+                                        err = $"Functions are case-sensitive. \"{lex}\" is an invalid function name. Did you mean to call the function \"{caseInsensitiveMatches[0]}\"?";
+                                        break;
+                                    default:
+                                        err = $"Functions are case-sensitive. \"{lex}\" is an invalid function name. Did you mean to call one of the following functions? {string.Join(", ", caseInsensitiveMatches.Select(x => $"\"{x}\"").MyToArray())}";
+                                        break;
+                                }
+
+                                throw new ParsingException(_scanner.Position, err, new NotSupportedException(err));
                             }
-                        }
                     }
                 case TokenType.LBracket:
-                    t = scanner.GetToken();
+                    t = _scanner.GetToken();
                     var exc = new Exception("Variable accessors should come in the form [i], where i is an integer.");
                     int i;
                     if (t is LexicalToken)
@@ -627,30 +477,26 @@ namespace HexInnovation
                             }
                             finally
                             {
-                                if (scanner.GetToken().TokenType != TokenType.RBracket)
-                                    throw new ParsingException(scanner.Position, exc.Message, exc);
+                                if (_scanner.GetToken().TokenType != TokenType.RBracket)
+                                    throw new ParsingException(_scanner.Position, exc.Message, exc);
                             }
                         }
                     }
                     throw exc;
                 case TokenType.LParen:
                     var cond = Conditional();
-                    if (scanner.GetToken().TokenType != TokenType.RParen)
-                        throw new ParsingException(scanner.Position, "Mismatching parentheses");
+                    if (_scanner.GetToken().TokenType != TokenType.RParen)
+                        throw new ParsingException(_scanner.Position, "Mismatching parentheses");
 
                     return cond;
                 default:
-                    throw new ParsingException(scanner.Position, "Invalid conversion string.");
+                    throw new ParsingException(_scanner.Position, "Invalid conversion string.");
             }
         }
 
-        ~Parser()
-        {
-            Dispose();
-        }
         public void Dispose()
         {
-            scanner.Dispose();
+            _scanner.Dispose();
         }
     }
 }

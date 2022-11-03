@@ -1,315 +1,144 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace HexInnovation
 {
     public abstract class AbstractSyntaxTree
     {
-        public abstract object Evaluate(object[] Parameters);
+        public object Evaluate(CultureInfo cultureInfo, object[] parameters)
+        {
+            try
+            {
+                return DoEvaluate(cultureInfo, parameters);
+            }
+            catch (Exception ex) when (!(ex is NodeEvaluationException))
+            {
+                throw new NodeEvaluationException(this, ex);
+            }
+        }
+        public abstract object DoEvaluate(CultureInfo cultureInfo, object[] parameters);
         public abstract override string ToString();
     }
     abstract class BinaryNode : AbstractSyntaxTree
     {
-        protected BinaryNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
+        protected BinaryNode(BinaryOperator @operator, AbstractSyntaxTree left, AbstractSyntaxTree right)
         {
-            this.left = left;
-            this.right = right;
+            _operator = @operator;
+            _left = left;
+            _right = right;
         }
-        protected AbstractSyntaxTree left, right;
+        private readonly AbstractSyntaxTree _left, _right;
+        private readonly BinaryOperator _operator;
+        public sealed override object DoEvaluate(CultureInfo cultureInfo, object[] parameters)
+        {
+            return _operator.Evaluate(_left, _right, cultureInfo, parameters);
+        }
+        public sealed override string ToString()
+        {
+            return $"({_left} {_operator} {_right})";
+        }
     }
-    class ExponentNode : BinaryNode
+    sealed class ExponentNode : BinaryNode
     {
         public ExponentNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
-        {
-
-        }
-        public override object Evaluate(object[] Parameters)
-        {
-            var l = left.Evaluate(Parameters);
-            var r = right.Evaluate(Parameters);
-            if (l is double && r is double)
-                return Math.Pow((double)l, (double)r);
-            else
-                return null;
-        }
-        public override string ToString()
-        {
-            return $"({left} ^ {right})";
-        }
+            : base(Operator.Exponentiation, left, right) { }
     }
-    class AddNode : BinaryNode
+    sealed class AddNode : BinaryNode
     {
         public AddNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
-        {
-
-        }
-        public override object Evaluate(object[] Parameters)
-        {
-            var l = (dynamic)left.Evaluate(Parameters);
-            var r = (dynamic)right.Evaluate(Parameters);
-
-            if (l == null && r == null)
-                return null;
-
-            return l + r;
-        }
-        public override string ToString()
-        {
-            return $"({left} + {right})";
-        }
+            : base(Operator.Addition, left, right) { }
     }
-    class SubtractNode : BinaryNode
+    sealed class SubtractNode : BinaryNode
     {
         public SubtractNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
-        {
-
-        }
-        public override object Evaluate(object[] Parameters)
-        {
-            dynamic l = left.Evaluate(Parameters);
-            dynamic r = right.Evaluate(Parameters);
-
-            if (l == null || r == null)
-                return null;
-
-            return l - r;
-        }
-        public override string ToString()
-        {
-            return $"({left} - {right})";
-        }
+            : base(Operator.Subtraction, left, right) { }
     }
-    class MultiplyNode : BinaryNode
+    sealed class MultiplyNode : BinaryNode
     {
         public MultiplyNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
-        {
-
-        }
-        public override object Evaluate(object[] Parameters)
-        {
-            return (dynamic)left.Evaluate(Parameters) * (dynamic)right.Evaluate(Parameters);
-        }
-        public override string ToString()
-        {
-            return $"({left} * {right})";
-        }
+            : base(Operator.Multiply, left, right) { }
     }
-    class ModuloNode : BinaryNode
+    sealed class ModuloNode : BinaryNode
     {
         public ModuloNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
-        {
-
-        }
-        public override object Evaluate(object[] Parameters)
-        {
-            return (dynamic)left.Evaluate(Parameters) % (dynamic)right.Evaluate(Parameters);
-        }
-        public override string ToString()
-        {
-            return $"({left} % {right})";
-        }
+            : base(Operator.Remainder, left, right) { }
     }
-    class AndNode : BinaryNode
+    sealed class AndNode : BinaryNode
     {
         public AndNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
-        {
-
-        }
-        public override object Evaluate(object[] Parameters)
-        {
-            return (dynamic)left.Evaluate(Parameters) && (dynamic)right.Evaluate(Parameters);
-        }
-        public override string ToString()
-        {
-            return $"({left} && {right})";
-        }
+            : base(Operator.And, left, right) { }
     }
-
-    class NullCoalescingNode : BinaryNode
+    sealed class NullCoalescingNode : BinaryNode
     {
         public NullCoalescingNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
-        {
-
-        }
-        public override object Evaluate(object[] Parameters)
-        {
-            return (dynamic)left.Evaluate(Parameters) ?? (dynamic)right.Evaluate(Parameters);
-        }
-        public override string ToString()
-        {
-            return $"({left} ?? {right})";
-        }
+            : base(Operator.NullCoalescing, left, right) { }
     }
-    class OrNode : BinaryNode
+    sealed class OrNode : BinaryNode
     {
         public OrNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
-        {
-
-        }
-        public override object Evaluate(object[] Parameters)
-        {
-            return (dynamic)left.Evaluate(Parameters) || (dynamic)right.Evaluate(Parameters);
-        }
-        public override string ToString()
-        {
-            return $"({left} || {right})";
-        }
+            : base(Operator.Or, left, right) { }
     }
-    class DivideNode : BinaryNode
+    sealed class DivideNode : BinaryNode
     {
         public DivideNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
-        {
-
-        }
-        public override object Evaluate(object[] Parameters)
-        {
-            return (dynamic)left.Evaluate(Parameters) / (dynamic)right.Evaluate(Parameters);
-        }
-        public override string ToString()
-        {
-            return $"({left} / {right})";
-        }
+            : base(Operator.Division, left, right) { }
     }
-    class TernaryNode : AbstractSyntaxTree
-    {
-        public TernaryNode(AbstractSyntaxTree Condition, AbstractSyntaxTree Positive, AbstractSyntaxTree Negative)
-        {
-            this.Condition = Condition;
-            this.Positive = Positive;
-            this.Negative = Negative;
-        }
-        private AbstractSyntaxTree Condition;
-        private AbstractSyntaxTree Positive;
-        private AbstractSyntaxTree Negative;
-
-        public override object Evaluate(object[] Parameters)
-        {
-            if ((dynamic)Condition.Evaluate(Parameters) == true)
-            {
-                return Positive.Evaluate(Parameters);
-            }
-            else
-            {
-                return Negative.Evaluate(Parameters);
-            }
-        }
-        public override string ToString()
-        {
-            return $"({Condition} ? {Positive} : {Negative})";
-        }
-    }
-    class NotEqualNode : BinaryNode
+    sealed class NotEqualNode : BinaryNode
     {
         public NotEqualNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
-        {
-
-        }
-        public override object Evaluate(object[] Parameters)
-        {
-            return (dynamic)left.Evaluate(Parameters) != (dynamic)right.Evaluate(Parameters);
-        }
-        public override string ToString()
-        {
-            return $"({left} != {right})";
-        }
+            : base(Operator.Inequality, left, right) { }
     }
-    class EqualNode : BinaryNode
+    sealed class EqualNode : BinaryNode
     {
         public EqualNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
-        {
-
-        }
-        public override object Evaluate(object[] Parameters)
-        {
-            return (dynamic)left.Evaluate(Parameters) == (dynamic)right.Evaluate(Parameters);
-        }
-        public override string ToString()
-        {
-            return $"({left} == {right})";
-        }
+            : base(Operator.Equality, left, right) { }
     }
-    class LessThanNode : BinaryNode
+    sealed class LessThanNode : BinaryNode
     {
         public LessThanNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
-        {
-
-        }
-        public override object Evaluate(object[] Parameters)
-        {
-            return (dynamic)left.Evaluate(Parameters) < (dynamic)right.Evaluate(Parameters);
-        }
-        public override string ToString()
-        {
-            return $"({left} < {right})";
-        }
+            : base(Operator.LessThan, left, right) { }
     }
-    class LessThanEqualNode : BinaryNode
+    sealed class LessThanEqualNode : BinaryNode
     {
         public LessThanEqualNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
-        {
-
-        }
-        public override object Evaluate(object[] Parameters)
-        {
-            return (dynamic)left.Evaluate(Parameters) <= (dynamic)right.Evaluate(Parameters);
-        }
-        public override string ToString()
-        {
-            return $"({left} <= {right})";
-        }
+            : base(Operator.LessThanOrEqual, left, right) { }
     }
-    class GreaterThanNode : BinaryNode
+    sealed class GreaterThanNode : BinaryNode
     {
         public GreaterThanNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
-        {
-
-        }
-        public override object Evaluate(object[] Parameters)
-        {
-            return (dynamic)left.Evaluate(Parameters) > (dynamic)right.Evaluate(Parameters);
-        }
-        public override string ToString()
-        {
-            return $"({left} > {right})";
-        }
+            : base(Operator.GreaterThan, left, right) { }
     }
-    class GreaterThanEqualNode : BinaryNode
+    sealed class GreaterThanEqualNode : BinaryNode
     {
         public GreaterThanEqualNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
-            : base(left, right)
+            : base(Operator.GreaterThanOrEqual, left, right) { }
+    }
+    sealed class TernaryNode : AbstractSyntaxTree
+    {
+        public TernaryNode(AbstractSyntaxTree condition, AbstractSyntaxTree positive, AbstractSyntaxTree negative)
         {
-
+            _condition = condition;
+            _positive = positive;
+            _negative = negative;
         }
-        public override object Evaluate(object[] Parameters)
+        private readonly AbstractSyntaxTree _condition;
+        private readonly AbstractSyntaxTree _positive;
+        private readonly AbstractSyntaxTree _negative;
+
+        public override object DoEvaluate(CultureInfo cultureInfo, object[] parameters)
         {
-            return (dynamic)left.Evaluate(Parameters) >= (dynamic)right.Evaluate(Parameters);
+            return TernaryOperator.Evaluate(_condition, _positive, _negative, cultureInfo, parameters);
         }
         public override string ToString()
         {
-            return $"({left} >= {right})";
+            return $"({_condition} ? {_positive} : {_negative})";
         }
     }
-    class NullNode : AbstractSyntaxTree
+    sealed class NullNode : AbstractSyntaxTree
     {
-        public override object Evaluate(object[] Parameters)
+        public override object DoEvaluate(CultureInfo cultureInfo, object[] parameters)
         {
             return null;
         }
@@ -320,134 +149,83 @@ namespace HexInnovation
     }
     abstract class UnaryNode : AbstractSyntaxTree
     {
-        public UnaryNode(AbstractSyntaxTree node)
+        protected UnaryNode(UnaryOperator @operator, AbstractSyntaxTree node)
         {
-            this.node = node;
+            _operator = @operator;
+            _node = node;
         }
-        private AbstractSyntaxTree node;
-        public override object Evaluate(object[] Parameters)
+        private readonly UnaryOperator _operator;
+        private readonly AbstractSyntaxTree _node;
+        public sealed override object DoEvaluate(CultureInfo cultureInfo, object[] parameters)
         {
-            return Evaluate((dynamic)node.Evaluate(Parameters));
+            return _operator.Evaluate(_node.Evaluate(cultureInfo, parameters));
         }
-        protected abstract object Evaluate(dynamic value);
-        public override string ToString()
-        {
-            return node.ToString();
-        }
+        public sealed override string ToString() => $"{_operator}({_node})";
     }
-    class NotNode : UnaryNode
+    sealed class NotNode : UnaryNode
     {
         public NotNode(AbstractSyntaxTree node)
-            : base(node)
-        {
-        }
-        protected override object Evaluate(dynamic value)
-        {
-            return !value;
-        }
-        public override string ToString()
-        {
-            return $"!({base.ToString()})";
-        }
+            : base(Operator.LogicalNot, node) { }
     }
-    class NegativeNode : UnaryNode
+    sealed class NegativeNode : UnaryNode
     {
         public NegativeNode(AbstractSyntaxTree node)
-            : base(node)
-        {
-        }
-        protected override object Evaluate(dynamic value)
-        {
-            return -value;
-        }
-        public override string ToString()
-        {
-            return $"-({base.ToString()})";
-        }
+            : base(Operator.UnaryNegation, node) { }
     }
     class ValueNode : AbstractSyntaxTree
     {
-        public object Value { get; set; }
-        public ValueNode(object Value)
+        public ValueNode(object value)
         {
-            this.Value = Value;
+            Value = value;
         }
-        public override object Evaluate(object[] Parameters)
-        {
-            return Value;
-        }
-        public override string ToString()
-        {
-            return Value.ToString();
-        }
+        protected object Value { get; }
+        public sealed override object DoEvaluate(CultureInfo cultureInfo, object[] parameters) => Value;
+        public override string ToString() => $"{Value}";
     }
     /// <summary>
-    /// A constant, like e or pi
+    /// A constant, like e or pi, or any arbitrary number specified in the ConverterParameter
     /// </summary>
-    class ConstantNumberNode : ValueNode
+    sealed class ConstantNumberNode : ValueNode
     {
-        public ConstantNumberNode(double Value)
-            : base(Value) { }
+        public ConstantNumberNode(double value)
+            : base(value) { }
     }
-    class StringNode : ValueNode
+    sealed class StringNode : ValueNode
     {
-        public StringNode(string Value)
-            : base(Value)
-        {
-        }
-        public override string ToString()
-        {
-            return $"\"{Value}\"";
-        }
+        public StringNode(string value)
+            : base(value) { }
+        public override string ToString() => $"\"{Value}\"";
     }
-    class VariableNode : AbstractSyntaxTree
+    sealed class VariableNode : AbstractSyntaxTree
     {
-        public VariableNode(int Index)
+        public VariableNode(int index)
         {
-            this.Index = Index;
+            _index = index;
         }
         /// <summary>
         /// The index of the variable we want to get.
         /// </summary>
-        private int Index;
-        public override object Evaluate(object[] Parameters)
+        private readonly int _index;
+        public override object DoEvaluate(CultureInfo cultureInfo, object[] parameters)
         {
-            if (Parameters.Length <= Index)
+            if (parameters.Length <= _index)
             {
-                string variableName;
-                switch (Index)
-                {
-                    case 0:
-                        variableName = "x";
-                        break;
-                    case 1:
-                        variableName = "y";
-                        break;
-                    case 2:
-                        variableName = "z";
-                        break;
-                    default:
-                        variableName = $"[{Index}]";
-                        break;
-                }
+                var error = new StringBuilder("Error accessing variable ").Append(this).Append(". ");
 
-                var error = new StringBuilder("Error accessing variable ").Append(variableName).Append(". ");
-
-                if (Parameters.Length == 0)
+                if (parameters.Length == 0)
                     error.Append("No");
                 else
-                    error.Append("Only ").Append(Parameters.Length);
+                    error.Append("Only ").Append(parameters.Length);
 
-                throw new IndexOutOfRangeException(error.Append(" variable").Append(Parameters.Length == 1 ? " was" : "s were")
+                throw new IndexOutOfRangeException(error.Append(" variable").Append(parameters.Length == 1 ? " was" : "s were")
                     .Append(" specified.").ToString());
             }
 
-            return MathConverter.ConvertToObject(Parameters[Index]);
+            return parameters[_index];
         }
-
         public override string ToString()
         {
-            switch (Index)
+            switch (_index)
             {
                 case 0:
                     return "x";
@@ -456,193 +234,125 @@ namespace HexInnovation
                 case 2:
                     return "z";
                 default:
-                    return $"[{Index}]";
+                    return $"[{_index}]";
             }
         }
     }
-    class FormulaNode0 : AbstractSyntaxTree
+
+    public abstract class CustomFunction : AbstractSyntaxTree
     {
-        public FormulaNode0(string FormulaName, Func<object> formula)
+        public string FunctionName { get; internal set; }
+
+        protected bool TryConvertStruct<T>(object argument, out T value)
+            where T : struct
         {
-            this.FormulaName = FormulaName;
-            this.formula = formula;
+            if (Operator.DoesImplicitConversionExist(argument?.GetType(), typeof(T), true) && Operator.DoImplicitConversion(argument, typeof(T?)) is T a)
+            {
+                value = a;
+                return true;
+            }
+            else
+            {
+                value = default;
+                return false;
+            }
         }
-        private string FormulaName;
-        private Func<object> formula;
-        public override object Evaluate(object[] Parameters)
+        protected bool TryConvert<T>(object argument, out T value)
+            where T : class
         {
-            return formula();
-        }
-        public override string ToString()
-        {
-            return $"{FormulaName}()";
+            if (Operator.DoesImplicitConversionExist(argument?.GetType(), typeof(T), true) && Operator.DoImplicitConversion(argument, typeof(T)) is T a)
+            {
+                value = a;
+                return true;
+            }
+            else
+            {
+                value = default;
+                return false;
+            }
         }
     }
+
+    public abstract class ZeroArgFunction : CustomFunction
+    {
+        public sealed override object DoEvaluate(CultureInfo cultureInfo, object[] parameters)
+        {
+            return Evaluate(cultureInfo);
+        }
+        public abstract object Evaluate(CultureInfo cultureInfo);
+
+        public override string ToString()
+        {
+            return $"{FunctionName}()";
+        }
+    }
+
+
     /// <summary>
     /// A formula that takes one input
     /// </summary>
-    class FormulaNode1 : AbstractSyntaxTree
+    public abstract class OneArgFunction : CustomFunction
     {
-        public FormulaNode1(string FormulaName, Func<object, object> formula, AbstractSyntaxTree input)
+        internal AbstractSyntaxTree Argument { get; set; }
+        public sealed override object DoEvaluate(CultureInfo cultureInfo, object[] parameters)
         {
-            this.FormulaName = FormulaName;
-            this.formula = formula;
-            this.input = input;
+            return Evaluate(cultureInfo, Argument.Evaluate(cultureInfo, parameters));
         }
-        private string FormulaName;
-        private Func<object, object> formula;
-        private AbstractSyntaxTree input;
-
-        public override object Evaluate(object[] Parameters)
-        {
-            return formula(input.Evaluate(Parameters));
-        }
+        public abstract object Evaluate(CultureInfo cultureInfo, object parameter);
         public override string ToString()
         {
-            return $"{FormulaName}({input})";
+            return $"{FunctionName}({Argument})";
         }
     }
-    
-    class FormulaNode2 : AbstractSyntaxTree
+    public abstract class OneDoubleFunction : OneArgFunction
     {
-        public FormulaNode2(string FormulaName, Func<object, object, object> formula, AbstractSyntaxTree arg1, AbstractSyntaxTree arg2)
+        public sealed override object Evaluate(CultureInfo cultureInfo, object parameter)
         {
-            this.FormulaName = FormulaName;
-            this.formula = formula;
-            this.arg1 = arg1;
-            this.arg2 = arg2;
+            if (TryConvertStruct<double>(parameter, out var x))
+                return Evaluate(cultureInfo, x);
+            else if (parameter == null)
+                return EvaluateNullArgument(cultureInfo);
+            else
+                throw new ArgumentException($"{FunctionName} accepts only a numeric input or null.");
         }
-        private string FormulaName;
-        private Func<object, object, object> formula;
-        private AbstractSyntaxTree arg1, arg2;
-        public override object Evaluate(object[] Parameters)
+        public abstract double? Evaluate(CultureInfo cultureInfo, double parameter);
+        public virtual double? EvaluateNullArgument(CultureInfo cultureInfo)
         {
-            var val1 = arg1.Evaluate(Parameters);
-            var val2 = arg2.Evaluate(Parameters);
-            return formula(val1, val2);
+            return null;
         }
+    }
+
+    /// <summary>
+    /// A function that takes two arguments
+    /// </summary>
+    public abstract class TwoArgFunction : CustomFunction
+    {
+        internal AbstractSyntaxTree Argument1 { get; set; }
+        internal AbstractSyntaxTree Argument2 { get; set; }
+        public sealed override object DoEvaluate(CultureInfo cultureInfo, object[] parameters)
+        {
+            return Evaluate(cultureInfo, Argument1.Evaluate(cultureInfo, parameters), Argument2.Evaluate(cultureInfo, parameters));
+        }
+        public abstract object Evaluate(CultureInfo cultureInfo, object x, object y);
         public override string ToString()
         {
-            return $"{FormulaName}({arg1}, {arg2})";
+            return $"{FunctionName}({Argument1}, {Argument2})";
         }
     }
     /// <summary>
-    /// A formula that takes one to infinity arguments.
+    /// A formula that takes anywhere from zero to infinity arguments.
     /// </summary>
-    class FormulaNodeN : AbstractSyntaxTree
+    public abstract class ArbitraryArgFunction : CustomFunction
     {
-        public static object And(IEnumerable<object> args)
+        internal AbstractSyntaxTree[] Arguments { get; set; }
+        public sealed override object DoEvaluate(CultureInfo cultureInfo, object[] parameters)
         {
-            foreach (bool arg in args)
-            {
-                if (!arg)
-                    return false;
-            }
-
-            return true;
+            return Evaluate(cultureInfo, Arguments.Select(x => new Func<object>(() => x.Evaluate(cultureInfo, parameters))).ToArray());
         }
-        public static object Or(IEnumerable<object> args)
-        {
-            foreach (bool arg in args)
-            {
-                if (arg)
-                    return true;
-            }
-
-            return false;
-        }
-        public static object Nor(IEnumerable<object> args)
-        {
-            foreach (bool arg in args)
-            {
-                if (arg)
-                    return false;
-            }
-
-            return true;
-        }
-        public static object Max(IEnumerable<object> args)
-        {
-            dynamic max = null;
-            foreach (dynamic arg in args)
-            {
-                if (max == null || arg > max)
-                {
-                    max = arg;
-                }
-            }
-            return max;
-        }
-        public static object Min(IEnumerable<object> args)
-        {
-            dynamic min = null;
-            foreach (dynamic arg in args)
-            {
-                if (min == null || arg < min)
-                {
-                    min = arg;
-                }
-            }
-            return min;
-        }
-        public static object Format(IEnumerable<object> args)
-        {
-            dynamic format = args.First();
-
-            return string.Format(format, args.Skip(1).ToArray());
-        }
-        public static string Concat(IEnumerable<object> args)
-        {
-            List<object> argVals = args.ToList();
-            if (argVals.Count == 1 && argVals[0] is IEnumerable)
-                return string.Concat(argVals[0] as dynamic);
-            else
-                return string.Concat(argVals);
-        }
-        public static string Join(IEnumerable<object> args)
-        {
-            dynamic separator = args.First();
-
-            var argVals = args.Skip(1).ToArray();
-            if (argVals.Length == 1 && argVals[0] is IEnumerable)
-                return string.Join(separator, argVals[0] as dynamic);
-            else
-                return string.Concat(argVals);
-        }
-        public static object Average(IEnumerable<object> args)
-        {
-            dynamic sum = 0.0;
-            var count = 0;
-            foreach (double? arg in args.Select(p => MathConverter.ConvertToDouble(p)))
-            {
-                if (arg.HasValue)
-                {
-                    count++;
-                    sum += arg;
-                }
-            }
-            if (count == 0)
-                return null;
-
-            return sum / count;
-        }
-        public FormulaNodeN(string FormulaName, Func<IEnumerable<object>, object> formula, IEnumerable<AbstractSyntaxTree> args)
-        {
-            this.FormulaName = FormulaName;
-            this.formula = formula;
-            this.args = args;
-        }
-        private string FormulaName;
-        private Func<IEnumerable<object>, object> formula;
-        private IEnumerable<AbstractSyntaxTree> args;
-        public override object Evaluate(object[] Parameters)
-        {
-            return formula(args.Select(p => p.Evaluate(Parameters)));
-        }
-
+        public abstract object Evaluate(CultureInfo cultureInfo, Func<object>[] parameters);
         public override string ToString()
         {
-            return $"{FormulaName}({string.Join(", ", args)})";
+            return $"{FunctionName}({string.Join(", ", Arguments.OfType<object>().MyToArray())})";
         }
     }
 }
