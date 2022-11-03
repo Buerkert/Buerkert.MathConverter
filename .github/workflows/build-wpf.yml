@@ -26,16 +26,13 @@ jobs:
             6.0.x
       - name: Build with dotnet
         working-directory: ./MathConverter/WPF
-        run: dotnet build -c Release
-        
+        run: dotnet build -c Release        
       - name: Build test project
         working-directory: ./MathConverter.UnitTests/WPF
         run: dotnet build
-        
       - name: Run unit tests
         working-directory: ./MathConverter.UnitTests/WPF
-        run: dotnet test
-        
+        run: dotnet test       
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
