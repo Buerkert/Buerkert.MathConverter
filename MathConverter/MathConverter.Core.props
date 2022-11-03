@@ -6,18 +6,21 @@
 
   <PropertyGroup>
     <RootNamespace>HexInnovation</RootNamespace>
-    <Company>Hex Innovation</Company>
-    <Copyright>Copyright © 2015-$([System.DateTime]::Now.ToString(`yyyy`)) $(Company)</Copyright>
+    <Company>Buerkert Werke GmbH &amp; Co. KG</Company>
+    <Copyright>
+      Copyright © 2015-2022 Hex Innovation modified by Copyright (c) Buerkert Fluid Control Systems $([System.DateTime]::Now.ToString(`yyyy`))
+    </Copyright>
     <Product>Buerkert.$(AssemblyName)</Product>
     <Version>2.1</Version>
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <FileVersion>$(AssemblyVersion)</FileVersion>
     <ApplicationVersion>$(AssemblyVersion)</ApplicationVersion>
-    <Authors>$(Company)</Authors>
+    <Authors>Hex Innovation, $(Company)</Authors>
     <Description>A $(MathConverterTarget) Converter class that does it all.</Description>
-    <PackageProjectUrl>https://github.com/hexinnovation/MathConverter</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/hexinnovation/MathConverter</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Buerkert/MathConverter</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Buerkert/MathConverter</RepositoryUrl>
     <PackageIcon>smalllogo.png</PackageIcon>
+    <PackageId>Buerkert.$(AssemblyName)</PackageId>
     <RepositoryType>GitHub</RepositoryType>
     <PackageTags>$(PackageTags) Converter Math Arbitrary Expressions ConverterParameter IValueConverter IMultiValueConverter</PackageTags>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
