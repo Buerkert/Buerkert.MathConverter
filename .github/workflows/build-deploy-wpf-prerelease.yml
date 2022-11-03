@@ -1,4 +1,4 @@
-name: build-deploy-wpf.prerelease
+name: build-deploy-wpf-prerelease
 
 on:
   push:
