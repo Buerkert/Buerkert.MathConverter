@@ -13,9 +13,9 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2.5.0
     - name: Setup .NET Core
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v3
       with:
         dotnet-version: '6.0.x'
     - name: Build with dotnet
@@ -23,7 +23,7 @@ jobs:
     - name: Run unit tests
       run: dotnet test
     - name: Upload artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: MathConverter
         path: MathConverter\bin\Release\*nupkg
