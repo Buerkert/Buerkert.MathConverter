@@ -1,10 +1,9 @@
 name: build-deploy-wpf.prerelease
 
 on:
-  release:
-    push:
-      branches:
-        - master
+  push:
+    branches:
+      - master
 
 jobs:
   build:
