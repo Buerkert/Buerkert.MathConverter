@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace HexInnovation
+﻿namespace HexInnovation
 {
     class Token
     {
@@ -8,10 +6,12 @@ namespace HexInnovation
         {
             TokenType = tokenType;
         }
+
         public TokenType TokenType { get; }
 
         public override string ToString() => $"{TokenType} token";
     }
+
     class LexicalToken : Token
     {
         public LexicalToken(TokenType tokenType, string lex)
@@ -19,6 +19,7 @@ namespace HexInnovation
         {
             Lex = lex;
         }
+
         public string Lex { get; }
 
         public override string ToString()
@@ -26,6 +27,7 @@ namespace HexInnovation
             return $"Lexical ({TokenType}) Token (\"{Lex.Replace("\"", "\\\"")}\")";
         }
     }
+
     class InterpolatedStringToken : LexicalToken
     {
         public InterpolatedStringToken(string lex, List<AbstractSyntaxTree> arguments)
@@ -33,8 +35,10 @@ namespace HexInnovation
         {
             Arguments = arguments;
         }
+
         public List<AbstractSyntaxTree> Arguments { get; }
     }
+
     enum TokenType
     {
         X,

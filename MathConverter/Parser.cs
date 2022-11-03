@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
+﻿using System.Globalization;
 #if !XAMARIN
-using System.Windows;
 #endif
 
 namespace HexInnovation
@@ -22,29 +18,34 @@ namespace HexInnovation
 #if DEBUG
 #pragma warning disable CS7095 // Filter expression is a constant
 #pragma warning disable CS8360 // Filter expression is a constant 'false'. 
-                when (false)
+                    when (false)
 #pragma warning restore CS8360 // Filter expression is a constant 'false'. 
 #pragma warning restore CS7095 // Filter expression is a constant
 #endif
 
                 {
-                    throw new Exception($"Failed to parse the expression:{Environment.NewLine}{expression}{Environment.NewLine}See the inner exception for details.", e);
+                    throw new Exception(
+                        $"Failed to parse the expression:{Environment.NewLine}{expression}{Environment.NewLine}See the inner exception for details.",
+                        e);
                 }
             }
         }
 
         private static string ErrorWrongTokenType(TokenType type)
         {
-            return $"MathConverter internal exception: if TokenType is {type}, the token must be a {(type == TokenType.InterpolatedString ? nameof(InterpolatedStringToken) : nameof(LexicalToken))}.";
+            return
+                $"MathConverter internal exception: if TokenType is {type}, the token must be a {(type == TokenType.InterpolatedString ? nameof(InterpolatedStringToken) : nameof(LexicalToken))}.";
         }
 
         private readonly Scanner _scanner;
         private readonly CustomFunctionCollection _customFunctions;
+
         private Parser(CustomFunctionCollection customFunctions, string expression)
         {
             _scanner = new Scanner(this, expression);
             _customFunctions = customFunctions;
         }
+
         internal AbstractSyntaxTree ParseInterpolatedStringArg()
         {
             var result = Conditional();
@@ -58,9 +59,11 @@ namespace HexInnovation
                 case TokenType.Colon:
                     return result;
                 default:
-                    throw new ParsingException(_scanner.Position, "Error parsing interpolated string. Could not find closing curly bracket (or a colon, comma, or semicolon) after the argument.");
+                    throw new ParsingException(_scanner.Position,
+                        "Error parsing interpolated string. Could not find closing curly bracket (or a colon, comma, or semicolon) after the argument.");
             }
         }
+
         private IEnumerable<AbstractSyntaxTree> ConverterParameter()
         {
             while (true)
@@ -77,14 +80,17 @@ namespace HexInnovation
                         yield return result;
                         break;
                     default:
-                        throw new ParsingException(_scanner.Position, "The conversion parameter could not be parsed to a valid string.");
+                        throw new ParsingException(_scanner.Position,
+                            "The conversion parameter could not be parsed to a valid string.");
                 }
             }
         }
+
         private AbstractSyntaxTree Conditional()
         {
             return Conditional(NullCoalescing());
         }
+
         private AbstractSyntaxTree Conditional(AbstractSyntaxTree e)
         {
             var t = _scanner.GetToken();
@@ -99,17 +105,20 @@ namespace HexInnovation
                         case TokenType.Colon:
                             return Conditional(new TernaryNode(e, then, Conditional()));
                         default:
-                            throw new ParsingException(_scanner.Position, "Could not find the ':' to terminate the ternary ('?:') statement");
+                            throw new ParsingException(_scanner.Position,
+                                "Could not find the ':' to terminate the ternary ('?:') statement");
                     }
                 default:
                     _scanner.PutBackToken();
                     return e;
             }
         }
+
         private AbstractSyntaxTree NullCoalescing()
         {
             return NullCoalescing(ConditionalOr());
         }
+
         private AbstractSyntaxTree NullCoalescing(AbstractSyntaxTree e)
         {
             var t = _scanner.GetToken();
@@ -123,10 +132,12 @@ namespace HexInnovation
                     return e;
             }
         }
+
         private AbstractSyntaxTree ConditionalOr()
         {
             return ConditionalOr(ConditionalAnd());
         }
+
         private AbstractSyntaxTree ConditionalOr(AbstractSyntaxTree e)
         {
             var t = _scanner.GetToken();
@@ -140,10 +151,12 @@ namespace HexInnovation
                     return e;
             }
         }
+
         private AbstractSyntaxTree ConditionalAnd()
         {
             return ConditionalAnd(Equality());
         }
+
         private AbstractSyntaxTree ConditionalAnd(AbstractSyntaxTree e)
         {
             var t = _scanner.GetToken();
@@ -157,10 +170,12 @@ namespace HexInnovation
                     return e;
             }
         }
+
         private AbstractSyntaxTree Equality()
         {
             return Equality(Relational());
         }
+
         private AbstractSyntaxTree Equality(AbstractSyntaxTree e)
         {
             var t = _scanner.GetToken();
@@ -176,10 +191,12 @@ namespace HexInnovation
                     return e;
             }
         }
+
         private AbstractSyntaxTree Relational()
         {
             return Relational(Additive());
         }
+
         private AbstractSyntaxTree Relational(AbstractSyntaxTree e)
         {
             var t = _scanner.GetToken();
@@ -199,10 +216,12 @@ namespace HexInnovation
                     return e;
             }
         }
+
         private AbstractSyntaxTree Additive()
         {
             return Additive(Multiplicative());
         }
+
         private AbstractSyntaxTree Additive(AbstractSyntaxTree e)
         {
             var t = _scanner.GetToken();
@@ -218,10 +237,12 @@ namespace HexInnovation
                     return e;
             }
         }
+
         private AbstractSyntaxTree Multiplicative()
         {
             return Multiplicative(Exponent());
         }
+
         private AbstractSyntaxTree Multiplicative(AbstractSyntaxTree e)
         {
             var t = _scanner.GetToken();
@@ -252,6 +273,7 @@ namespace HexInnovation
         {
             return Exponent(Primary());
         }
+
         private AbstractSyntaxTree Exponent(AbstractSyntaxTree e)
         {
             var t = _scanner.GetToken();
@@ -265,8 +287,10 @@ namespace HexInnovation
                     {
                         if (!(t is LexicalToken lex))
                             throw new ArgumentException(ErrorWrongTokenType(t.TokenType));
-                        
-                        return Exponent(new ExponentNode(e, new ConstantNumberNode(double.Parse(lex.Lex, NumberStyles.Number, CultureInfo.InvariantCulture))));
+
+                        return Exponent(new ExponentNode(e,
+                            new ConstantNumberNode(double.Parse(lex.Lex, NumberStyles.Number,
+                                CultureInfo.InvariantCulture))));
                     }
                     else
                     {
@@ -278,6 +302,7 @@ namespace HexInnovation
                     return e;
             }
         }
+
         private AbstractSyntaxTree Primary()
         {
             var t = _scanner.GetToken();
@@ -287,7 +312,8 @@ namespace HexInnovation
                 case TokenType.Number:
                     if (!(t is LexicalToken numToken))
                         throw new ArgumentException(ErrorWrongTokenType(t.TokenType));
-                    return new ConstantNumberNode(double.Parse(numToken.Lex, NumberStyles.Number, CultureInfo.InvariantCulture));
+                    return new ConstantNumberNode(double.Parse(numToken.Lex, NumberStyles.Number,
+                        CultureInfo.InvariantCulture));
                 case TokenType.Plus:
                     return Primary();
                 case TokenType.Minus:
@@ -307,7 +333,12 @@ namespace HexInnovation
                 case TokenType.InterpolatedString:
                     if (!(t is InterpolatedStringToken token))
                         throw new ArgumentException(ErrorWrongTokenType(t.TokenType));
-                    return new FormatFunction { FunctionName = "Format", Arguments = new AbstractSyntaxTree[] { new StringNode(token.Lex) }.Concat(token.Arguments).ToArray() };
+                    return new FormatFunction
+                    {
+                        FunctionName = "Format",
+                        Arguments = new AbstractSyntaxTree[] { new StringNode(token.Lex) }.Concat(token.Arguments)
+                            .ToArray()
+                    };
 
                 case TokenType.Lexical:
                     if (!(t is LexicalToken lexToken))
@@ -330,7 +361,8 @@ namespace HexInnovation
                             {
                                 if (function is ZeroArgFunction func0)
                                 {
-                                    string ex() => $"{lex} is a function that takes zero arguments. You must call it like this: \"{lex}()\"";
+                                    string ex() =>
+                                        $"{lex} is a function that takes zero arguments. You must call it like this: \"{lex}()\"";
 
                                     if (_scanner.GetToken().TokenType != TokenType.LParen)
                                         throw new ParsingException(_scanner.Position, ex());
@@ -342,7 +374,8 @@ namespace HexInnovation
                                 else if (function is OneArgFunction func1)
                                 {
                                     // Create a formula1.
-                                    string ex () => $"{lex} is a formula that takes one argument. You must specify the arguments like this: \"{lex}(3)\"";
+                                    string ex() =>
+                                        $"{lex} is a formula that takes one argument. You must specify the arguments like this: \"{lex}(3)\"";
 
                                     if (_scanner.GetToken().TokenType != TokenType.LParen)
                                         throw new ParsingException(_scanner.Position, ex());
@@ -361,10 +394,12 @@ namespace HexInnovation
 
                                     return func1;
                                 }
+
                                 if (function is TwoArgFunction func2)
                                 {
                                     // Create a formula2.
-                                    string ex() => $"{lex} is a formula that takes two arguments. You must specify the arguments like this: \"{lex}(3;2)\"";
+                                    string ex() =>
+                                        $"{lex} is a formula that takes two arguments. You must specify the arguments like this: \"{lex}(3;2)\"";
 
                                     if (_scanner.GetToken().TokenType != TokenType.LParen)
                                         throw new ParsingException(_scanner.Position, ex());
@@ -394,12 +429,14 @@ namespace HexInnovation
                                             return func2;
                                         }
                                     }
+
                                     throw new ParsingException(_scanner.Position, ex());
                                 }
                                 else if (function is ArbitraryArgFunction funcN)
                                 {
                                     if (_scanner.GetToken().TokenType != TokenType.LParen)
-                                        throw new ParsingException(_scanner.Position, $"You must specify arguments for {lex}. Those arguments must be enclosed in parentheses.");
+                                        throw new ParsingException(_scanner.Position,
+                                            $"You must specify arguments for {lex}. Those arguments must be enclosed in parentheses.");
 
                                     var trees = new List<AbstractSyntaxTree>();
 
@@ -421,7 +458,8 @@ namespace HexInnovation
                                         }
                                         catch (Exception e)
                                         {
-                                            throw new ParsingException(_scanner.Position, $"Error parsing arguments for {lex}.", e);
+                                            throw new ParsingException(_scanner.Position,
+                                                $"Error parsing arguments for {lex}.", e);
                                         }
 
                                         var type = _scanner.GetToken().TokenType;
@@ -433,19 +471,22 @@ namespace HexInnovation
                                             case TokenType.Semicolon:
                                                 break;
                                             default:
-                                                throw new ParsingException(_scanner.Position, $"Error parsing arguments for {lex}. Invalid character: {type}. Expected either a comma, semicolon, or right parenthesis.");
+                                                throw new ParsingException(_scanner.Position,
+                                                    $"Error parsing arguments for {lex}. Invalid character: {type}. Expected either a comma, semicolon, or right parenthesis.");
                                         }
                                     }
                                 }
                                 else
                                 {
-                                    throw new ParsingException(_scanner.Position, $"{lex} is not a valid function. It must inherit from either {nameof(ZeroArgFunction)}, {nameof(OneArgFunction)}, {nameof(TwoArgFunction)}, or {nameof(ArbitraryArgFunction)}.");
+                                    throw new ParsingException(_scanner.Position,
+                                        $"{lex} is not a valid function. It must inherit from either {nameof(ZeroArgFunction)}, {nameof(OneArgFunction)}, {nameof(TwoArgFunction)}, or {nameof(ArbitraryArgFunction)}.");
                                 }
                             }
                             else
                             {
                                 string err;
-                                var caseInsensitiveMatches = _customFunctions.Select(x => x.Name).Where(x => x?.ToLower() == lex.ToLower()).ToList();
+                                var caseInsensitiveMatches = _customFunctions.Select(x => x.Name)
+                                    .Where(x => x?.ToLower() == lex.ToLower()).ToList();
 
                                 switch (caseInsensitiveMatches.Count)
                                 {
@@ -453,10 +494,12 @@ namespace HexInnovation
                                         err = $"{lex} is an invalid function name.";
                                         break;
                                     case 1:
-                                        err = $"Functions are case-sensitive. \"{lex}\" is an invalid function name. Did you mean to call the function \"{caseInsensitiveMatches[0]}\"?";
+                                        err =
+                                            $"Functions are case-sensitive. \"{lex}\" is an invalid function name. Did you mean to call the function \"{caseInsensitiveMatches[0]}\"?";
                                         break;
                                     default:
-                                        err = $"Functions are case-sensitive. \"{lex}\" is an invalid function name. Did you mean to call one of the following functions? {string.Join(", ", caseInsensitiveMatches.Select(x => $"\"{x}\"").MyToArray())}";
+                                        err =
+                                            $"Functions are case-sensitive. \"{lex}\" is an invalid function name. Did you mean to call one of the following functions? {string.Join(", ", caseInsensitiveMatches.Select(x => $"\"{x}\"").MyToArray())}";
                                         break;
                                 }
 
@@ -482,6 +525,7 @@ namespace HexInnovation
                             }
                         }
                     }
+
                     throw exc;
                 case TokenType.LParen:
                     var cond = Conditional();

@@ -11,6 +11,7 @@
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
         <Description>A sample WPF application built to showcase a few of the features of MathConverter</Description>
         <PackageProjectUrl>https://github.com/hexinnovation/MathConverter</PackageProjectUrl>
+        <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Configuration)'=='Debug'">
         <DefineConstants>DEBUG;TRACE</DefineConstants>

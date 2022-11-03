@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Globalization;
-using System.Linq;
-
 #if !XAMARIN
 using System.Windows;
 #endif
@@ -13,6 +10,7 @@ namespace HexInnovation
     {
         public override object Evaluate(CultureInfo cultureInfo) => DateTime.Now;
     }
+
     sealed class CosFunction : OneDoubleFunction
     {
         public override double? Evaluate(CultureInfo cultureInfo, double x)
@@ -20,6 +18,7 @@ namespace HexInnovation
             return Math.Cos(x);
         }
     }
+
     sealed class SinFunction : OneDoubleFunction
     {
         public override double? Evaluate(CultureInfo cultureInfo, double x)
@@ -27,6 +26,7 @@ namespace HexInnovation
             return Math.Sin(x);
         }
     }
+
     sealed class TanFunction : OneDoubleFunction
     {
         public override double? Evaluate(CultureInfo cultureInfo, double x)
@@ -34,6 +34,7 @@ namespace HexInnovation
             return Math.Tan(x);
         }
     }
+
     sealed class AbsFunction : OneDoubleFunction
     {
         public override double? Evaluate(CultureInfo cultureInfo, double x)
@@ -41,6 +42,7 @@ namespace HexInnovation
             return Math.Abs(x);
         }
     }
+
     sealed class AcosFunction : OneDoubleFunction
     {
         public override double? Evaluate(CultureInfo cultureInfo, double x)
@@ -48,6 +50,7 @@ namespace HexInnovation
             return Math.Acos(x);
         }
     }
+
     sealed class AsinFunction : OneDoubleFunction
     {
         public override double? Evaluate(CultureInfo cultureInfo, double x)
@@ -55,6 +58,7 @@ namespace HexInnovation
             return Math.Asin(x);
         }
     }
+
     sealed class AtanFunction : OneDoubleFunction
     {
         public override double? Evaluate(CultureInfo cultureInfo, double x)
@@ -62,6 +66,7 @@ namespace HexInnovation
             return Math.Atan(x);
         }
     }
+
     sealed class CeilingFunction : OneDoubleFunction
     {
         public override double? Evaluate(CultureInfo cultureInfo, double x)
@@ -69,6 +74,7 @@ namespace HexInnovation
             return Math.Ceiling(x);
         }
     }
+
     sealed class FloorFunction : OneDoubleFunction
     {
         public override double? Evaluate(CultureInfo cultureInfo, double x)
@@ -76,6 +82,7 @@ namespace HexInnovation
             return Math.Floor(x);
         }
     }
+
     sealed class SqrtFunction : OneDoubleFunction
     {
         public override double? Evaluate(CultureInfo cultureInfo, double x)
@@ -83,6 +90,7 @@ namespace HexInnovation
             return Math.Sqrt(x);
         }
     }
+
     sealed class DegreesFunction : OneDoubleFunction
     {
         public override double? Evaluate(CultureInfo cultureInfo, double x)
@@ -90,6 +98,7 @@ namespace HexInnovation
             return x / Math.PI * 180;
         }
     }
+
     sealed class RadiansFunction : OneDoubleFunction
     {
         public override double? Evaluate(CultureInfo cultureInfo, double x)
@@ -97,6 +106,7 @@ namespace HexInnovation
             return x / 180 * Math.PI;
         }
     }
+
     sealed class ToLowerFunction : OneArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, object parameter)
@@ -104,6 +114,7 @@ namespace HexInnovation
             return $"{parameter}".ToLower();
         }
     }
+
     sealed class ToUpperFunction : OneArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, object parameter)
@@ -116,9 +127,12 @@ namespace HexInnovation
     {
         public override object Evaluate(CultureInfo cultureInfo, object parameter)
         {
-            return TryConvertStruct<bool>(parameter, out var value) && value ? Visibility.Visible : Visibility.Collapsed;
+            return TryConvertStruct<bool>(parameter, out var value) && value
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
     }
+
     sealed class VisibleOrHiddenFunction : OneArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, object parameter)
@@ -133,12 +147,14 @@ namespace HexInnovation
         {
             if (TryConvertStruct<double>(parameter, out var @double))
                 return @double;
-            else if (TryConvert<string>(parameter, out var @string) && double.TryParse(@string, NumberStyles.Number, cultureInfo, out @double))
+            else if (TryConvert<string>(parameter, out var @string) &&
+                     double.TryParse(@string, NumberStyles.Number, cultureInfo, out @double))
                 return @double;
             else
                 return null;
         }
     }
+
     sealed class StartsWithFunction : TwoArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, object x, object y)
@@ -158,6 +174,7 @@ namespace HexInnovation
             return new bool?();
         }
     }
+
     sealed class EndsWithFunction : TwoArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, object x, object y)
@@ -177,6 +194,7 @@ namespace HexInnovation
             return new bool?();
         }
     }
+
     sealed class Atan2Function : TwoArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, object x, object y)
@@ -187,6 +205,7 @@ namespace HexInnovation
                 return null;
         }
     }
+
     sealed class LogFunction : TwoArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, object x, object y)
@@ -197,6 +216,7 @@ namespace HexInnovation
                 return null;
         }
     }
+
     sealed class ContainsFunction : TwoArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, object x, object y)
@@ -215,6 +235,7 @@ namespace HexInnovation
             }
         }
     }
+
     sealed class IsNullFunction : ArbitraryArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, Func<object>[] parameters)
@@ -225,10 +246,12 @@ namespace HexInnovation
             }
             else
             {
-                throw new Exception($"The function {FunctionName} only accepts two arguments. It should be called like \"{FunctionName}(3.45;1)\".");
+                throw new Exception(
+                    $"The function {FunctionName} only accepts two arguments. It should be called like \"{FunctionName}(3.45;1)\".");
             }
         }
     }
+
     sealed class RoundFunction : ArbitraryArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, Func<object>[] parameters)
@@ -241,20 +264,24 @@ namespace HexInnovation
                     else
                         return null;
                 case 2:
-                    if (TryConvertStruct<double>(parameters[0](), out var a) && TryConvertStruct<double>(parameters[1](), out var b))
+                    if (TryConvertStruct<double>(parameters[0](), out var a) &&
+                        TryConvertStruct<double>(parameters[1](), out var b))
                     {
                         if (b == (int)b)
                             return Math.Round(a, (int)b);
                         else
-                            throw new Exception($"The second argument for {FunctionName} (if specified) must be an integer.");
+                            throw new Exception(
+                                $"The second argument for {FunctionName} (if specified) must be an integer.");
                     }
                     else
                         return null;
                 default:
-                    throw new Exception($"The function {FunctionName} only accepts one or two arguments. It should be called like \"{FunctionName}(3.4)\" or \"{FunctionName}(3.45;1)\".");
+                    throw new Exception(
+                        $"The function {FunctionName} only accepts one or two arguments. It should be called like \"{FunctionName}(3.4)\" or \"{FunctionName}(3.45;1)\".");
             }
         }
     }
+
     sealed class AndFunction : ArbitraryArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, Func<object>[] parameters)
@@ -283,6 +310,7 @@ namespace HexInnovation
             return currentValue;
         }
     }
+
     sealed class OrFunction : ArbitraryArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, Func<object>[] parameters)
@@ -311,6 +339,7 @@ namespace HexInnovation
             return false;
         }
     }
+
     sealed class NorFunction : ArbitraryArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, Func<object>[] parameters)
@@ -318,6 +347,7 @@ namespace HexInnovation
             return Operator.LogicalNot.Evaluate(new OrFunction().Evaluate(cultureInfo, parameters));
         }
     }
+
     sealed class MaxFunction : ArbitraryArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, Func<object>[] parameters)
@@ -344,6 +374,7 @@ namespace HexInnovation
             return max;
         }
     }
+
     sealed class MinFunction : ArbitraryArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, Func<object>[] parameters)
@@ -370,6 +401,7 @@ namespace HexInnovation
             return min;
         }
     }
+
     sealed class FormatFunction : ArbitraryArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, Func<object>[] parameters)
@@ -381,17 +413,22 @@ namespace HexInnovation
             }
             else
             {
-                throw new ArgumentException($"The {FunctionName} function must be called with a string as the first argument.");
+                throw new ArgumentException(
+                    $"The {FunctionName} function must be called with a string as the first argument.");
             }
         }
     }
+
     sealed class ConcatFunction : ArbitraryArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, Func<object>[] parameters)
         {
-            return string.Concat((parameters.Length == 1 && parameters[0]() is IEnumerable enumerable ? enumerable.Cast<object>() : parameters.Select(x => x())).MyToArray());
+            return string.Concat((parameters.Length == 1 && parameters[0]() is IEnumerable enumerable
+                ? enumerable.Cast<object>()
+                : parameters.Select(x => x())).MyToArray());
         }
     }
+
     sealed class JoinFunction : ArbitraryArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, Func<object>[] parameters)
@@ -400,14 +437,18 @@ namespace HexInnovation
             {
                 var argVals = parameters.Skip(1).Select(x => x()).ToArray();
 
-                return string.Join(separator, (argVals.Length == 1 && argVals[0] is IEnumerable enumerable ? enumerable.Cast<object>() : argVals).MyToArray());
+                return string.Join(separator,
+                    (argVals.Length == 1 && argVals[0] is IEnumerable enumerable ? enumerable.Cast<object>() : argVals)
+                    .MyToArray());
             }
             else
             {
-                throw new ArgumentException($"{FunctionName}() function must be called with a string as the first argument.");
+                throw new ArgumentException(
+                    $"{FunctionName}() function must be called with a string as the first argument.");
             }
         }
     }
+
     sealed class AverageFunction : ArbitraryArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, Func<object>[] parameters)
@@ -418,11 +459,13 @@ namespace HexInnovation
             return arguments.Count == 0 ? new double?() : arguments.Average();
         }
     }
+
     sealed class ThrowFunction : ArbitraryArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, Func<object>[] parameters)
         {
-            throw new Exception($"The {FunctionName} function was called with {parameters.Length} argument{(parameters.Length == 1 ? "" : "s")}: {string.Join(", ", parameters.Select(x => x()).MyToArray())}");
+            throw new Exception(
+                $"The {FunctionName} function was called with {parameters.Length} argument{(parameters.Length == 1 ? "" : "s")}: {string.Join(", ", parameters.Select(x => x()).MyToArray())}");
         }
     }
 }
