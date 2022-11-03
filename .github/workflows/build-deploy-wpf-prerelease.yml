@@ -1,13 +1,10 @@
-name: build-wpf
+name: build-deploy-wpf.prerelease
 
 on:
-  push:
-    branches:
-      - '*'
-      - '!master'
-  pull_request:
-    branches:
-      - '*'
+  release:
+    push:
+      branches:
+        - master
 
 jobs:
   build:
@@ -24,17 +21,28 @@ jobs:
             3.0.x
             3.1.x
             6.0.x
+        env:
+          NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
       - name: Build with dotnet
         working-directory: ./MathConverter/WPF
-        run: dotnet build -c Release
+        run: dotnet build -c Release --version-suffix build.${{ github.run_number }}
+
       - name: Build test project
         working-directory: ./MathConverter.UnitTests/WPF
         run: dotnet build
+
       - name: Run unit tests
         working-directory: ./MathConverter.UnitTests/WPF
         run: dotnet test
+
+      - name: Push generated package to GitHub registry
+        run: dotnet nuget push MathConverter\WPF\bin\Release\*nupkg
+
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
           name: MathConverter
           path: MathConverter\WPF\bin\Release\*nupkg
+
+    

@@ -2,7 +2,7 @@ name: build-deploy-wpf
 
 on:
   release:
-    types: [published]
+    types: [ published ]
 
 jobs:
   build:
@@ -10,37 +10,37 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2.3.4
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v2
-      with:
-        dotnet-version: |
-          3.0.x
-          3.1.x
-          6.0.x
-      env:
-        NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
-        
-    - name: Build with dotnet
-      working-directory: ./MathConverter/WPF
-      run: dotnet build -c Release
-      
-    - name: Build test project
-      working-directory: ./MathConverter.UnitTests/WPF
-      run: dotnet build
-      
-    - name: Run unit tests
-      working-directory: ./MathConverter.UnitTests/WPF
-      run: dotnet test
-      
-    - name: Push generated package to GitHub registry
-      run: dotnet nuget push MathConverter\WPF\bin\Release\*nupkg
-      
-    - name: Upload artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: MathConverter
-        path: MathConverter\WPF\bin\Release\*nupkg
+      - name: Checkout
+        uses: actions/checkout@v2.3.4
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: |
+            3.0.x
+            3.1.x
+            6.0.x
+        env:
+          NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Build with dotnet
+        working-directory: ./MathConverter/WPF
+        run: dotnet build -c Release
+
+      - name: Build test project
+        working-directory: ./MathConverter.UnitTests/WPF
+        run: dotnet build
+
+      - name: Run unit tests
+        working-directory: ./MathConverter.UnitTests/WPF
+        run: dotnet test
+
+      - name: Push generated package to GitHub registry
+        run: dotnet nuget push MathConverter\WPF\bin\Release\*nupkg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: MathConverter
+          path: MathConverter\WPF\bin\Release\*nupkg
 
     
