@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>MathConverter</AssemblyName>
+    <RootNamespace>HexInnovation</RootNamespace>
+    <Product>Buerkert.$(AssemblyName)</Product>
+    <Company>Buerkert Werke GmbH &amp; Co. KG</Company>
+    <Copyright>
+      Copyright © 2015-2022 Hex Innovation modified by Copyright (c) Buerkert Fluid Control Systems $([System.DateTime]::Now.ToString(`yyyy`))
+    </Copyright>
+    <VersionPrefix>2.1</VersionPrefix>
+  </PropertyGroup>
+  <PropertyGroup>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>Buerkert.$(AssemblyName)</PackageId>
+    <Description>A Math WPF Converter class that does it all.</Description>
+    <PackageProjectUrl>https://github.com/Buerkert/Buerkert.MathConverter</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Buerkert/Buerkert.MathConverter</RepositoryUrl>
+    <RepositoryType>GitHub</RepositoryType>
+    <PackageIcon>smalllogo.png</PackageIcon>
+    <Authors>Hex Innovation, $(Company)</Authors>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageTags>WPF Converter Math Arbitrary Expressions ConverterParameter IValueConverter IMultiValueConverter</PackageTags>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="..\smalllogo.png" Pack="true" PackagePath=""/>
+    <Content Include="..\LICENSE" Pack="true" PackagePath=""/>
+    <Content Include="..\README.md" Pack="true" PackagePath=""/>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0.0" PrivateAssets="All"/>
+  </ItemGroup>
+</Project>
