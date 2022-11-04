@@ -1,6 +1,4 @@
 ﻿using System.Globalization;
-#if !XAMARIN
-#endif
 
 namespace HexInnovation
 {

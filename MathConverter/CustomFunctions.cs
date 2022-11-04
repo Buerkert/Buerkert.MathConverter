@@ -1,8 +1,6 @@
 ﻿using System.Collections;
 using System.Globalization;
-#if !XAMARIN
 using System.Windows;
-#endif
 
 namespace HexInnovation
 {
@@ -122,7 +120,7 @@ namespace HexInnovation
             return $"{parameter}".ToUpper();
         }
     }
-#if !XAMARIN
+
     sealed class VisibleOrCollapsedFunction : OneArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, object parameter)
@@ -140,7 +138,7 @@ namespace HexInnovation
             return TryConvertStruct<bool>(parameter, out var value) && value ? Visibility.Visible : Visibility.Hidden;
         }
     }
-#endif
+
     sealed class TryParseDoubleFunction : OneArgFunction
     {
         public override object Evaluate(CultureInfo cultureInfo, object parameter)
@@ -267,8 +265,8 @@ namespace HexInnovation
                     if (TryConvertStruct<double>(parameters[0](), out var a) &&
                         TryConvertStruct<double>(parameters[1](), out var b))
                     {
-                        if (b == (int)b)
-                            return Math.Round(a, (int)b);
+                        if (b == (int) b)
+                            return Math.Round(a, (int) b);
                         else
                             throw new Exception(
                                 $"The second argument for {FunctionName} (if specified) must be an integer.");
