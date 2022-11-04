@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 
 namespace MathConverterDemo
@@ -24,8 +23,13 @@ namespace MathConverterDemo
                 {
                     cb.ItemsSource = Enumerable.Range(0, 6);
                 }
+
                 cb.SelectedIndex = 0;
-                Loaded += delegate { cb.Focus(); cb.IsDropDownOpen = true; };
+                Loaded += delegate
+                {
+                    cb.Focus();
+                    cb.IsDropDownOpen = true;
+                };
             }
         }
     }

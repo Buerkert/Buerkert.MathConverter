@@ -1,20 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
-
-#if XAMARIN
-using Xamarin.Forms;
-using TypeConverterAttribute = Xamarin.Forms.TypeConverterAttribute;
-using XamarinTypeConverter = Xamarin.Forms.TypeConverter;
-using DependencyProperty = Xamarin.Forms.BindableProperty;
-#else
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Markup;
-#endif
 
 namespace HexInnovation
 {
@@ -44,8 +33,10 @@ namespace HexInnovation
                         return $"{number}rd";
                 }
             }
+
             return $"{number}th";
         }
+
         /// <summary>
         /// Sanitizes an argument as specified by a Binding.
         /// Converts DependencyProperty.UnsetValue with a warning to identify to a developer which Binding might not be correctly configured.
@@ -56,11 +47,13 @@ namespace HexInnovation
         /// <param name="parameter">The ConverterParameter being used for this conversion. This helps identify the (possibly faulty) binding.</param>
         /// <param name="targetType">The type we're trying to convert to. This helps identify the (possibly faulty) binding.</param>
         /// <returns>The <paramref name="arg"/> passed in, or <code>null</code> if the <paramref name="arg"/> is equal to <see cref="DependencyProperty.UnsetValue"/></returns>
-        private static object SanitizeBinding(object arg, int argIndex, int totalBinding, object parameter, Type targetType)
+        private static object SanitizeBinding(object arg, int argIndex, int totalBinding, object parameter,
+            Type targetType)
         {
             if (arg == DependencyProperty.UnsetValue)
             {
-                Debug.WriteLine($"Encountered {nameof(DependencyProperty.UnsetValue)} in the {(totalBinding > 1 ? $"{ComputeOrdinal(argIndex + 1)} " : "")}argument while trying to convert to type \"{targetType.FullName}\" using the ConverterParameter {(parameter == null ? "'null'" : $"\"{parameter}\"")}. Double-check that your binding is correct.");
+                Debug.WriteLine(
+                    $"Encountered {nameof(DependencyProperty.UnsetValue)} in the {(totalBinding > 1 ? $"{ComputeOrdinal(argIndex + 1)} " : "")}argument while trying to convert to type \"{targetType.FullName}\" using the ConverterParameter {(parameter == null ? "'null'" : $"\"{parameter}\"")}. Double-check that your binding is correct.");
                 return null;
             }
 
@@ -101,10 +94,14 @@ namespace HexInnovation
                 { new CustomFunctionDefinition { Name = "LCase", Function = typeof(ToLowerFunction) } },
                 { new CustomFunctionDefinition { Name = "ToUpper", Function = typeof(ToUpperFunction) } },
                 { new CustomFunctionDefinition { Name = "UCase", Function = typeof(ToUpperFunction) } },
-#if !XAMARIN
-                { new CustomFunctionDefinition { Name = "VisibleOrCollapsed", Function = typeof(VisibleOrCollapsedFunction) } },
-                { new CustomFunctionDefinition { Name = "VisibleOrHidden", Function = typeof(VisibleOrHiddenFunction) } },
-#endif
+                {
+                    new CustomFunctionDefinition
+                        { Name = "VisibleOrCollapsed", Function = typeof(VisibleOrCollapsedFunction) }
+                },
+                {
+                    new CustomFunctionDefinition
+                        { Name = "VisibleOrHidden", Function = typeof(VisibleOrHiddenFunction) }
+                },
                 { new CustomFunctionDefinition { Name = "TryParseDouble", Function = typeof(TryParseDoubleFunction) } },
                 { new CustomFunctionDefinition { Name = "StartsWith", Function = typeof(StartsWithFunction) } },
                 { new CustomFunctionDefinition { Name = "Contains", Function = typeof(ContainsFunction) } },
@@ -160,10 +157,8 @@ namespace HexInnovation
         /// A dictionary which stores a cache of AbstractSyntaxTrees for given ConverterParameter strings.
         /// This eliminates the need to parse the same statement over and over.
         /// </summary>
-        private Dictionary<string, AbstractSyntaxTree[]> _cachedResults = new Dictionary<string, AbstractSyntaxTree[]>();
-#if XAMARIN
-        private static readonly Dictionary<Type, XamarinTypeConverter> XamarinTypeConverters = new Dictionary<Type, XamarinTypeConverter>();
-#endif
+        private Dictionary<string, AbstractSyntaxTree[]>
+            _cachedResults = new Dictionary<string, AbstractSyntaxTree[]>();
 
         /// <summary>
         /// The conversion for a single value.
@@ -172,12 +167,14 @@ namespace HexInnovation
         {
             return Convert(new[] { value }, targetType, parameter, culture);
         }
+
         /// <summary>
         /// The actual convert method, for zero or more parameters.
         /// </summary>
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
-            var sanitizedValues = values?.Select((v, i) => SanitizeBinding(v, i, values.Length, parameter, targetType)).ToArray();
+            var sanitizedValues = values?.Select((v, i) => SanitizeBinding(v, i, values.Length, parameter, targetType))
+                .ToArray();
 
             List<object> evaluatedValues;
 
@@ -211,7 +208,9 @@ namespace HexInnovation
             // Now if there are more than one value, we will simply merge the values with commas, and use TypeConverter to handle the conversion to the appropriate type.
             // We do this in invariant culture to ensure that any type conversion (which must happen in InvariantCulture) succeeds.
             var stringJoinCulture = targetType == typeof(string) ? culture : CultureInfo.InvariantCulture;
-            var finalAnswerToConvert = evaluatedValues?.Count == 1 ? evaluatedValues[0] : string.Join(",", evaluatedValues.Select(p => string.Format(stringJoinCulture, "{0}", p)).MyToArray());
+            var finalAnswerToConvert = evaluatedValues?.Count == 1
+                ? evaluatedValues[0]
+                : string.Join(",", evaluatedValues.Select(p => string.Format(stringJoinCulture, "{0}", p)).MyToArray());
 
             // At this point, we have now computed our final answer.
             // However, we might need to do standard type conversion to convert it to a different type.
@@ -243,18 +242,6 @@ namespace HexInnovation
                 targetType = newTarget;
             }
 
-#if XAMARIN
-            // Let's try Xamarin.Forms.TypeConverter
-            var typeConverter = GetXamarinTypeConverter(targetType);
-
-            if (typeConverter != null)
-            {
-                // Xamarin.Forms.TypeConverters only convert from Invariant Strings. All other conversions are deprecated.
-                string convertFrom = finalAnswerToConvert as string ?? $"{finalAnswerToConvert}";
-                return typeConverter.ConvertFromInvariantString(convertFrom);
-            }
-#endif
-
             try
             {
                 if (Operator.DoesImplicitConversionExist(finalAnswerToConvert.GetType(), targetType, true))
@@ -276,11 +263,14 @@ namespace HexInnovation
                     }
                 }
             }
-            catch (InvalidCastException) { }
+            catch (InvalidCastException)
+            {
+            }
 
             // Welp, we can't convert this value... Oh well.
             return finalAnswerToConvert;
         }
+
         /// <summary>
         /// Don't call this method, as it is not supported.
         /// </summary>
@@ -289,6 +279,7 @@ namespace HexInnovation
             // WE CAN'T CONVERT BACK
             throw new NotSupportedException();
         }
+
         /// <summary>
         /// Don't call this method, as it is not supported.
         /// </summary>
@@ -297,27 +288,6 @@ namespace HexInnovation
             // WE CAN'T CONVERT BACK
             throw new NotSupportedException();
         }
-#if XAMARIN
-        private static XamarinTypeConverter GetXamarinTypeConverter(Type targetType)
-        {
-            if (XamarinTypeConverters.ContainsKey(targetType))
-            {
-                return XamarinTypeConverters[targetType];
-            }
-
-            foreach (var attribute in targetType.GetCustomAttributes<TypeConverterAttribute>())
-            {
-                var converterType = Type.GetType(attribute.ConverterTypeName, false);
-                if (converterType != null)
-                {
-                    return XamarinTypeConverters[targetType] = (XamarinTypeConverter)Activator.CreateInstance(converterType);
-                }
-            }
-
-            return XamarinTypeConverters[targetType] = null;
-        }
-#endif
-
 
         /// <summary>
         /// Parses an expression into a syntax tree that can be evaluated later.
@@ -330,7 +300,9 @@ namespace HexInnovation
             if (_cachedResults == null)
                 return Parser.Parse(CustomFunctions, parameter);
 
-            return _cachedResults.ContainsKey(parameter) ? _cachedResults[parameter] : (_cachedResults[parameter] = Parser.Parse(CustomFunctions, parameter));
+            return _cachedResults.ContainsKey(parameter)
+                ? _cachedResults[parameter]
+                : (_cachedResults[parameter] = Parser.Parse(CustomFunctions, parameter));
         }
     }
 }

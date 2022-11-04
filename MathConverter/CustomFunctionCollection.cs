@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections;
 
 namespace HexInnovation
 {
@@ -19,13 +16,15 @@ namespace HexInnovation
             }
             else if (item.Function == null || !typeof(CustomFunction).IsAssignableFrom(item.Function))
             {
-                throw new NullReferenceException($"The {nameof(CustomFunctionDefinition.Function)} property must be an instance of {nameof(CustomFunction)}.");
+                throw new NullReferenceException(
+                    $"The {nameof(CustomFunctionDefinition.Function)} property must be an instance of {nameof(CustomFunction)}.");
             }
             else
             {
                 if (item.Name == null)
                 {
-                    throw new NullReferenceException($"The {nameof(CustomFunctionDefinition.Name)} property must not be null.");
+                    throw new NullReferenceException(
+                        $"The {nameof(CustomFunctionDefinition.Name)} property must not be null.");
                 }
                 else if (_functions.ContainsKey(item.Name))
                 {
@@ -37,28 +36,34 @@ namespace HexInnovation
                 }
             }
         }
+
         public void Clear()
         {
             _functions.Clear();
         }
+
         public bool Contains(CustomFunctionDefinition item)
         {
             if (item == null)
                 throw new NullReferenceException($"The {nameof(CustomFunctionDefinition)} must not be null.");
             return _functions.TryGetValue(item.Name, out var @type) && type == item.Function;
         }
+
         private IEnumerable<CustomFunctionDefinition> ToIEnumerable()
         {
             return _functions.Select(x => new CustomFunctionDefinition { Name = x.Key, Function = x.Value });
         }
+
         public void CopyTo(CustomFunctionDefinition[] array, int arrayIndex)
         {
             CopyTo((Array)array, arrayIndex);
         }
+
         public IEnumerator<CustomFunctionDefinition> GetEnumerator()
         {
             return ToIEnumerable().GetEnumerator();
         }
+
         public bool Remove(CustomFunctionDefinition item)
         {
             if (Contains(item))
@@ -71,10 +76,12 @@ namespace HexInnovation
                 return false;
             }
         }
+
         public bool Remove(string functionName)
         {
             return _functions.Remove(functionName);
         }
+
         IEnumerator IEnumerable.GetEnumerator()
         {
             return ToIEnumerable().GetEnumerator();
@@ -157,6 +164,7 @@ namespace HexInnovation
             throw new NotSupportedException();
         }
     }
+
     public class CustomFunctionDefinition
     {
         public string Name { get; set; }
